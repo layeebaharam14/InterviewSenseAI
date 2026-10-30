@@ -80,26 +80,38 @@ def match_concept_in_text(concept: str, text: str) -> Tuple[bool, bool]:
     c_lower = concept.lower().strip()
     t_lower = text.lower()
 
-    # Collect variants
-    variants = [c_lower]
+    # Collect variants, keeping the exact concept first
+    ordered_variants = [c_lower]
     for key, syns in SYNONYM_MAP.items():
         if key in c_lower or any(s in c_lower for s in syns):
-            variants.extend(syns)
-            variants.append(key)
+            for s in syns:
+                if s not in ordered_variants:
+                    ordered_variants.append(s)
+            if key not in ordered_variants:
+                ordered_variants.append(key)
 
     is_found = False
     found_var = None
 
-    for var in set(variants):
-        if var in t_lower:
-            is_found = True
-            found_var = var
-            break
+    # First check exact whole-word occurrences in order
+    for var in ordered_variants:
         pattern = r"\b" + re.escape(var) + r"\b"
         if re.search(pattern, t_lower):
             is_found = True
             found_var = var
+            # If the exact concept itself is found, prioritize it and test if it is affirmative
+            if var == c_lower:
+                neg_test = r"\b(not|never|no|don't|do not|doesn't|does not|without|cannot|can't)\b(?:\s+\w+){0,4}\s+" + re.escape(var)
+                if not re.search(neg_test, t_lower):
+                    return True, False
             break
+
+    if not is_found:
+        for var in ordered_variants:
+            if var in t_lower:
+                is_found = True
+                found_var = var
+                break
 
     if not is_found:
         concept_tokens = clean_and_tokenize(c_lower)
@@ -469,6 +481,17 @@ def evaluate_technical_interview(technical_questions: List[Dict[str, Any]], tech
         for sk, sc_list in skill_scores.items()
     }
 
+    # Group scores by difficulty
+    diff_scores: Dict[str, List[float]] = {}
+    for e in evaluations:
+        d = e.get("difficulty", "Intermediate")
+        diff_scores.setdefault(d, []).append(e["score"])
+
+    difficulty_averages = {
+        d: round(sum(sc_list) / len(sc_list), 1)
+        for d, sc_list in diff_scores.items()
+    }
+
     # Identify strongest and weakest skills
     if skill_averages:
         sorted_skills = sorted(skill_averages.items(), key=lambda item: item[1], reverse=True)
@@ -488,5 +511,251 @@ def evaluate_technical_interview(technical_questions: List[Dict[str, Any]], tech
         "unanswered_questions": unanswered_count,
         "strongest_skill": strongest_skill,
         "weakest_skill": weakest_skill,
-        "skill_averages": skill_averages
+        "skill_averages": skill_averages,
+        "difficulty_averages": difficulty_averages
+    }
+
+
+def generate_combined_summary(
+    evaluation_results: Dict[str, Any],
+    audio_results: Dict[int, Any] = None,
+    video_results: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    Generates a cohesive, multi-modal summary of technical interview performance.
+    
+    IMPORTANT:
+    Technical correctness remains the primary evaluation.
+    Speech and visual metrics are presented as separate supporting dimensions.
+    No arbitrary combined score is created, and no facial movements are interpreted
+    as emotion, personality, or honesty.
+    """
+    evals = evaluation_results.get("evaluations", [])
+    overall_score = evaluation_results.get("overall_score", 0)
+
+    # 1. Technical Strengths
+    technical_strengths = []
+    for e in evals:
+        if e.get("score", 0) >= 60 and not e.get("is_unanswered"):
+            for w in e.get("what_you_did_well", []):
+                if w not in technical_strengths and len(technical_strengths) < 5:
+                    technical_strengths.append(w)
+    if not technical_strengths:
+        if overall_score >= 50:
+            technical_strengths.append("Demonstrated foundational familiarity with domain concepts across question prompts.")
+        else:
+            technical_strengths.append("Attempted the technical interview; ready to build core conceptual depth.")
+
+    # 2. Weak Technical Areas
+    weak_technical_areas = []
+    for e in evals:
+        if e.get("is_unanswered"):
+            weak_technical_areas.append(f"Question {e.get('question_number', '?')} ({e.get('skill', 'Topic')}) was left unanswered.")
+        elif e.get("score", 0) < 60:
+            for imp in e.get("areas_to_improve", []):
+                if imp not in weak_technical_areas and len(weak_technical_areas) < 5:
+                    weak_technical_areas.append(f"[{e.get('skill', 'Technical')}] {imp}")
+    if not weak_technical_areas:
+        weak_technical_areas.append("Demonstrated strong concept retention across topics; continue exploring advanced edge cases and internals.")
+
+    # 3. Communication Strengths & Improvements
+    comm_strengths = []
+    comm_improvements = []
+    if audio_results:
+        tot_words = sum(a.get("word_count", 0) for a in audio_results.values())
+        tot_fillers = sum(a.get("filler_words", 0) for a in audio_results.values())
+        valid_audios = [a for a in audio_results.values() if a.get("word_count", 0) > 0]
+        avg_wpm = round(sum(a.get("words_per_minute", 0) for a in valid_audios) / max(1, len(valid_audios)), 1) if valid_audios else 0.0
+        avg_fluency = round(sum(a.get("fluency_score", 0) for a in audio_results.values()) / max(1, len(audio_results)), 1) if audio_results else 0.0
+
+        if 70 <= avg_wpm <= 165:
+            comm_strengths.append(f"Well-paced conversational delivery rate ({avg_wpm} WPM average).")
+        elif avg_wpm > 165:
+            comm_improvements.append(f"Speech pace was moderately fast ({avg_wpm} WPM). Incorporate deliberate pauses to enhance clarity.")
+        elif 0 < avg_wpm < 70:
+            comm_improvements.append(f"Speech pace was deliberate with pauses ({avg_wpm} WPM). Practice expressing concepts more fluidly.")
+
+        if tot_fillers <= 2 and tot_words > 20:
+            comm_strengths.append(f"Clear verbal articulation with minimal filler words ({tot_fillers} detected across session).")
+        elif tot_fillers > 3:
+            comm_improvements.append(f"Detected {tot_fillers} filler words across responses. Practice replacing verbal crutches with brief silent pauses.")
+
+        if avg_fluency >= 75:
+            comm_strengths.append(f"Smooth oral articulation and confident technical delivery ({avg_fluency}/100 fluency score).")
+        elif avg_fluency < 55 and tot_words > 0:
+            comm_improvements.append("Work on cohesive sentence structure and technical flow during spoken responses.")
+    else:
+        comm_strengths.append("Spoken responses recorded and transcribed.")
+        comm_improvements.append("Audio delivery metrics were not recorded or unavailable for this session.")
+
+    if not comm_strengths:
+        comm_strengths.append("Maintained responsive communication across answered questions.")
+    if not comm_improvements:
+        comm_improvements.append("Communication delivery and pacing were well-managed.")
+
+    # 4. Visual Observations
+    visual_obs = []
+    if video_results:
+        v_vis = video_results.get("overall_face_visibility_pct", 0.0)
+        v_cam = video_results.get("overall_camera_facing_pct", 0.0)
+        v_mov = video_results.get("overall_head_movement", "Natural")
+        v_post = video_results.get("dominant_posture", "Upright")
+
+        if v_vis >= 80:
+            visual_obs.append(f"Consistently visible within the webcam frame ({v_vis}% visibility).")
+        elif v_vis > 0:
+            visual_obs.append(f"Face was visible in {v_vis}% of captured frames; position camera to remain centered.")
+
+        visual_obs.append(f"Estimated camera engagement was {v_cam}% (screen orientation approximation).")
+        visual_obs.append(f"Head movement pacing was classified as: {v_mov}.")
+        if video_results.get("posture_coverage_pct", 0) > 0:
+            visual_obs.append(f"Upper-body alignment observed: {v_post}.")
+        else:
+            visual_obs.append("Posture analysis unavailable because upper body/shoulders were not sufficiently visible (zero penalty).")
+    else:
+        visual_obs.append("Visual behavioural analysis was not recorded or unavailable for this session.")
+
+    # 5. Topics to Revise
+    topics_to_revise = []
+    for e in evals:
+        for m in e.get("missing_points", []):
+            if m and "All major" not in m and m not in topics_to_revise and len(topics_to_revise) < 6:
+                topics_to_revise.append(m)
+    if not topics_to_revise:
+        weakest = evaluation_results.get("weakest_skill", "Core Concepts")
+        topics_to_revise.append(f"Deep architectural nuances in {weakest}.")
+
+    # 6. Preparation Priorities
+    prep_priorities = []
+    weakest_sk = evaluation_results.get("weakest_skill", "General")
+    prep_priorities.append(f"1. Focused Revision: Deepen conceptual mechanics in {weakest_sk}.")
+    prep_priorities.append("2. Answer Structuring: State the core definition, explain internal mechanics, and provide an illustrative code example.")
+    if comm_improvements and "Audio delivery metrics" not in comm_improvements[0]:
+        prep_priorities.append(f"3. Spoken Delivery: {comm_improvements[0]}")
+    else:
+        prep_priorities.append("3. Spoken Fluency: Practice timed 15-second spoken technical explanations.")
+    prep_priorities.append("4. Progressive Simulation: Advance to higher difficulty tiers once concept coverage stabilizes above 75%.")
+
+    return {
+        "technical_strengths": technical_strengths,
+        "weak_technical_areas": weak_technical_areas,
+        "communication_strengths": comm_strengths,
+        "communication_improvements": comm_improvements,
+        "visual_observations": visual_obs,
+        "topics_to_revise": topics_to_revise,
+        "preparation_priorities": prep_priorities
+    }
+
+def generate_improvement_roadmap(
+    evaluation_results: Dict[str, Any],
+    audio_results: Dict[int, Any] = None,
+    video_results: Dict[str, Any] = None
+) -> Dict[str, List[Dict[str, str]]]:
+    """
+    Generates practical, prioritized improvement recommendations linked directly
+    to actual interview results. Categorized into High Priority, Medium Priority,
+    and Further Practice.
+    """
+    evals = evaluation_results.get("evaluations", [])
+    skill_avgs = evaluation_results.get("skill_averages", {})
+
+    high_priority = []
+    medium_priority = []
+    further_practice = []
+
+    # High Priority: Skills < 60% or unanswered questions
+    for sk, avg in skill_avgs.items():
+        if avg < 60:
+            high_priority.append({
+                "title": f"Master {sk} Core Mechanics",
+                "description": f"Your average score for {sk} was {avg}/100. Review fundamental definitions and syntax.",
+                "action": f"Dedicate 45 minutes to revise core documentation, code patterns, and common pitfalls in {sk}.",
+                "category": "Technical Mastery"
+            })
+
+    unanswered = [e for e in evals if e.get("is_unanswered")]
+    if unanswered:
+        q_nums = ", ".join(f"Q{e.get('question_number', '?')}" for e in unanswered)
+        high_priority.append({
+            "title": f"Address Skipped Questions ({q_nums})",
+            "description": f"{len(unanswered)} question(s) received 0 marks due to no response.",
+            "action": "Even when uncertain, formulate a structured partial response outlining related concepts or trade-offs.",
+            "category": "Interview Strategy"
+        })
+
+    # Medium Priority: Skills between 60% and 75%, or communication improvements
+    for sk, avg in skill_avgs.items():
+        if 60 <= avg < 75:
+            medium_priority.append({
+                "title": f"Deepen Technical Depth in {sk}",
+                "description": f"Solid foundation demonstrated ({avg}/100), but missed key trade-offs or technical depth.",
+                "action": f"Study Big-O algorithmic complexity, memory overhead, and edge cases for {sk}.",
+                "category": "Technical Depth"
+            })
+
+    if audio_results:
+        tot_fillers = sum(a.get("filler_words", 0) for a in audio_results.values())
+        if tot_fillers > 3:
+            medium_priority.append({
+                "title": "Reduce Verbal Fillers",
+                "description": f"Detected {tot_fillers} filler words across spoken responses.",
+                "action": "Practice speaking with intentional 1-second pauses instead of filler sounds ('um', 'like').",
+                "category": "Communication"
+            })
+        tot_words = sum(a.get("word_count", 0) for a in audio_results.values())
+        if tot_words < 15 and len(evals) > 0:
+            medium_priority.append({
+                "title": "Expand Oral Response Detail",
+                "description": "Spoken responses were brief within the 15-second window.",
+                "action": "Aim to deliver 2-3 substantive technical sentences within 15 seconds (~25-35 words).",
+                "category": "Delivery Pacing"
+            })
+
+    # Further Practice: Strong skills (>=75%) or video framing
+    for sk, avg in skill_avgs.items():
+        if avg >= 75:
+            further_practice.append({
+                "title": f"Advanced Architecture in {sk}",
+                "description": f"High mastery demonstrated ({avg}/100)! Ready for senior-level nuances.",
+                "action": f"Explore distributed architecture, concurrency locks, and production trade-offs in {sk}.",
+                "category": "Advanced Growth"
+            })
+
+    if video_results:
+        cam_pct = video_results.get("overall_camera_facing_pct", 0)
+        if 0 < cam_pct < 65:
+            further_practice.append({
+                "title": "Camera Framing & Visual Presence",
+                "description": f"Camera engagement was estimated at {cam_pct}%. Optimal webcam alignment builds presence.",
+                "action": "Position webcam at eye level and keep the interview window directly under the camera lens.",
+                "category": "Framing & Setup"
+            })
+
+    # Fallbacks if categories are empty
+    if not high_priority:
+        high_priority.append({
+            "title": "Consolidate Technical Precision",
+            "description": "Solid baseline across all evaluated skills. Refine terminology to reach top-tier accuracy.",
+            "action": "Create flashcards for specialized technical terms and language internals.",
+            "category": "Precision"
+        })
+    if not medium_priority:
+        medium_priority.append({
+            "title": "Timed Mock Interview Simulation",
+            "description": "Practice rapid question comprehension and 15-second structured delivery.",
+            "action": "Retake the interview on 'Advanced' difficulty to test resilience under tighter timing.",
+            "category": "Simulation"
+        })
+    if not further_practice:
+        further_practice.append({
+            "title": "System Design & Production Scale",
+            "description": "Connect individual technical concepts to end-to-end system architecture.",
+            "action": "Read engineering case studies on how these concepts apply in large-scale distributed systems.",
+            "category": "System Design"
+        })
+
+    return {
+        "high_priority": high_priority,
+        "medium_priority": medium_priority,
+        "further_practice": further_practice
     }
