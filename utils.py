@@ -32,13 +32,18 @@ def _get_background_video_base64() -> str | None:
 
 def apply_css():
     """Injects custom CSS for the dark blue gradient theme, background video, and UI styling."""
-    video_b64 = _get_background_video_base64()
+    static_video_path = os.path.join(os.path.dirname(__file__), "static", "background_video.mp4")
+    if os.path.exists(static_video_path):
+        video_src = "app/static/background_video.mp4"
+    else:
+        video_b64 = _get_background_video_base64()
+        video_src = f"data:video/mp4;base64,{video_b64}" if video_b64 else None
 
-    if video_b64:
+    if video_src:
         st.markdown(
             f"""
             <video id="bg-video" autoplay loop muted playsinline>
-                <source src="data:video/mp4;base64,{video_b64}" type="video/mp4">
+                <source src="{video_src}" type="video/mp4">
             </video>
             <div id="video-overlay"></div>
             """,
@@ -140,17 +145,17 @@ def apply_css():
             background-color: transparent !important;
         }
 
-        /* 4. CENTER PERFECTLY & FULL SCREEN LAYOUT */
+        /* 4. CONTAINER LAYOUT & NATURAL TOP-DOWN SCROLLING */
         .main .block-container {
-            max-width: 850px !important;
+            max-width: 960px !important;
             min-height: 100vh !important;
             display: flex !important;
             flex-direction: column !important;
-            justify-content: center !important; /* Centers content vertically */
-            align-items: center !important;
-            padding: 2rem !important; /* Remove default top padding */
+            justify-content: flex-start !important;
+            align-items: stretch !important;
+            padding: 5.5rem 1.5rem 3rem 1.5rem !important;
             margin: 0 auto !important;
-            animation: fadeIn 0.8s ease-out;
+            animation: fadeIn 0.5s ease-out;
         }
 
         /* SUBTLE ANIMATION */
@@ -168,14 +173,19 @@ def apply_css():
             text-shadow: 0 0 18px rgba(56, 189, 248, 0.22) !important;
         }
         
-        p, .stMarkdown {
+        p {
             color: #f8fafc !important;
-            text-align: center !important;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             line-height: 1.6;
-            margin-bottom: 0.5rem !important; /* Reduced gap before button */
-            width: 100%;
-            text-shadow: 0 0 14px rgba(56, 189, 248, 0.14) !important;
+            margin-bottom: 0.5rem !important;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.12) !important;
+        }
+
+        .page-section p, .landing-hero-desc {
+            text-align: center !important;
+            max-width: 720px;
+            margin-left: auto !important;
+            margin-right: auto !important;
         }
 
         .question-text {
@@ -609,9 +619,15 @@ def speak_question(text):
     except Exception as e:
         st.error(f"TTS Error: {e}")
     finally:
-        # Cleanup temp file if it exists
+        # Safely cleanup engine and temp file
+        try:
+            if 'engine' in locals() and engine is not None:
+                engine.stop()
+                del engine
+        except Exception:
+            pass
         if os.path.exists(filename):
             try:
                 os.remove(filename)
-            except:
+            except Exception:
                 pass

@@ -1515,7 +1515,6 @@ def render_technical_interview_page():
     # Text Area Answer Input
     user_answer = st.text_area(
         "Candidate Response:",
-        value=st.session_state[input_key],
         height=190,
         placeholder="Type your answer here...",
         key=input_key,
@@ -2283,6 +2282,9 @@ def render_interview_page():
             # Update timer UI
             remaining = int(record_duration - elapsed)
             timer_placeholder.markdown(f"<h3 style='text-align: center; color: #ffeb3b;'>⏳ Time Remaining: {remaining}s</h3>", unsafe_allow_html=True)
+            
+            # Rate limit frame updates to ~25 fps to prevent Streamlit MediaFileStorageError
+            time.sleep(0.04)
             
         # Loop finished
         camera.release()

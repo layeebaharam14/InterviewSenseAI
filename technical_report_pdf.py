@@ -294,3 +294,4 @@ def generate_technical_pdf_report(session_summary: Dict[str, Any], evaluation_re
     pdf_bytes = doc.tobytes()
     doc.close()
     return pdf_bytes
+
