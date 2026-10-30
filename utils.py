@@ -140,22 +140,31 @@ def apply_css():
             width: 100vw !important;
         }
 
-        /* Make Streamlit top header transparent to remove white gap */
-        [data-testid="stHeader"] {
-            background-color: transparent !important;
+        /* Make Streamlit top header completely hidden to remove top white gap & reclaim space */
+        header[data-testid="stHeader"],
+        [data-testid="stHeader"],
+        div[data-testid="stToolbar"] {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            visibility: hidden !important;
         }
 
-        /* 4. CONTAINER LAYOUT & NATURAL TOP-DOWN SCROLLING */
-        .main .block-container {
+        /* 4. CONTAINER LAYOUT & NATURAL TOP-DOWN SCROLLING - SLEEK PADDING */
+        .main .block-container,
+        [data-testid="block-container"],
+        .block-container {
             max-width: 960px !important;
             min-height: 100vh !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
             align-items: stretch !important;
-            padding: 1.2rem 1.5rem 2rem 1.5rem !important;
+            padding: 0.4rem 1.5rem 1.5rem 1.5rem !important;
             margin: 0 auto !important;
-            animation: fadeIn 0.4s ease-out;
+            animation: fadeIn 0.35s ease-out;
         }
 
         /* Hide 0-size component iframes used for scroll-to-top */
@@ -174,32 +183,42 @@ def apply_css():
 
         /* Clean separators */
         hr {
-            margin-top: 0.8rem !important;
-            margin-bottom: 0.8rem !important;
+            margin-top: 0.45rem !important;
+            margin-bottom: 0.55rem !important;
             border: 0 !important;
             border-top: 1px solid rgba(56, 189, 248, 0.2) !important;
         }
 
         /* SUBTLE ANIMATION */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* IMPROVE TEXT ALIGNMENT AND SPACING */
+        /* IMPROVE TEXT ALIGNMENT AND SPACING - COMPACT HEADINGS */
         h1, h2, h3 {
             color: #ffffff !important;
             text-align: center !important;
             margin-top: 0 !important;
-            margin-bottom: 0.5rem !important; 
+            margin-bottom: 0.35rem !important; 
             text-shadow: 0 0 18px rgba(56, 189, 248, 0.22) !important;
+        }
+
+        h1 {
+            font-size: 2.1rem !important;
+        }
+        h2 {
+            font-size: 1.65rem !important;
+        }
+        h3 {
+            font-size: 1.25rem !important;
         }
         
         p {
             color: #f8fafc !important;
-            font-size: 1.05rem;
-            line-height: 1.6;
-            margin-bottom: 0.5rem !important;
+            font-size: 1.02rem;
+            line-height: 1.55;
+            margin-bottom: 0.4rem !important;
             text-shadow: 0 0 10px rgba(56, 189, 248, 0.12) !important;
         }
 
@@ -225,25 +244,25 @@ def apply_css():
             width: 100%;
             display: flex;
             justify-content: center;
-            margin-top: 1rem !important;
-            margin-bottom: 1rem !important;
+            margin-top: 0.4rem !important;
+            margin-bottom: 0.4rem !important;
         }
 
         button[kind="primary"] {
             background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
             color: #ffffff !important;
-            font-weight: 900 !important;
+            font-weight: 800 !important;
             text-shadow: none !important;
             border-radius: 12px !important;
             border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            padding: 1.2rem 2.5rem !important;
-            font-size: 1.4rem !important;
-            letter-spacing: 1px !important;
+            padding: 0.85rem 1.8rem !important;
+            font-size: 1.15rem !important;
+            letter-spacing: 0.5px !important;
             text-transform: uppercase !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5) !important;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.45) !important;
             width: 100% !important;
-            max-width: 360px !important;
+            max-width: 340px !important;
             display: block !important;
             margin: 0 auto !important;
         }
@@ -265,11 +284,12 @@ def apply_css():
             color: #94a3b8 !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
             border-radius: 8px !important;
-            padding: 0.5rem 1rem !important;
-            font-size: 0.9rem !important;
+            padding: 0.4rem 0.9rem !important;
+            font-size: 0.88rem !important;
             font-weight: 600 !important;
             transition: all 0.3s ease !important;
-            margin-bottom: 1rem !important;
+            margin-top: 0.1rem !important;
+            margin-bottom: 0.3rem !important;
             width: auto !important;
         }
         
@@ -364,10 +384,12 @@ def apply_css():
             scroll-behavior: smooth !important;
         }
         
-        /* Make room for fixed navbar only when the navbar is present (e.g. landing page) */
+        /* Make precise room for fixed navbar on all tabs of the landing page */
+        body:has(#landing-page-marker) .main .block-container,
+        .main:has(#landing-page-marker) .block-container,
         body:has(#home-bg-injector) .main .block-container,
         .main:has(#home-bg-injector) .block-container {
-            padding-top: 4.2rem !important;
+            padding-top: 3.4rem !important;
         }
         
         /* Hide navbar class */
@@ -375,16 +397,16 @@ def apply_css():
             display: none !important;
         }
 
-        /* Style st.radio as a navbar */
+        /* Style st.radio as a navbar - sleek and compact */
         div[data-testid="stRadio"] {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             width: 100% !important;
             z-index: 999999 !important;
-            background: rgba(15, 23, 42, 0.85) !important;
-            backdrop-filter: blur(10px) !important;
-            padding: 1rem 0 !important;
+            background: rgba(15, 23, 42, 0.88) !important;
+            backdrop-filter: blur(12px) !important;
+            padding: 0.5rem 0 !important;
             display: flex !important;
             justify-content: center !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -497,12 +519,13 @@ def apply_css():
         }
 
         .section-title {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 800;
             color: #ffffff;
             text-align: center;
-            margin-bottom: 2rem;
-            letter-spacing: 1px;
+            margin-top: 0 !important;
+            margin-bottom: 1.2rem;
+            letter-spacing: 0.5px;
         }
 
         /* About Section Flex Layout */

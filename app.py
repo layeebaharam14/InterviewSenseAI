@@ -230,7 +230,7 @@ def init_session_state():
         st.session_state.technical_evaluation_completed = False
 
 def render_landing_page():
-    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    st.markdown('<div id="top-anchor"></div><div id="landing-page-marker"></div>', unsafe_allow_html=True)
     # Inject Top Navigation Bar using Streamlit Radio
     st.radio(
         "Navigation",
@@ -307,6 +307,10 @@ def render_landing_page():
             align-items: center;
         }
 
+        div[data-testid="stColumns"]:has([class^="marker-"]), div[data-testid="stHorizontalBlock"]:has([class^="marker-"]) {
+            margin-bottom: 14px !important;
+        }
+
         div[data-testid="stColumns"]:has([class^="marker-"]):hover, div[data-testid="stHorizontalBlock"]:has([class^="marker-"]):hover {
             border: 1px solid rgba(56, 189, 248, 0.6) !important;
             box-shadow: 0 0 25px rgba(56, 189, 248, 0.15) !important;
@@ -352,7 +356,7 @@ def render_landing_page():
         """, unsafe_allow_html=True)
 
         # ABOUT SECTION
-        st.markdown("<h2 class='section-title' style='margin-top: -80px; margin-bottom: 3rem;'>About InterviewSense AI</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='section-title' style='margin-top: 0; margin-bottom: 1.2rem;'>About InterviewSense AI</h2>", unsafe_allow_html=True)
         
         # BOX 1
         col1, col2 = st.columns([3, 1], gap="large")
@@ -390,7 +394,7 @@ def render_landing_page():
             </svg>
             </div>""", unsafe_allow_html=True)
             
-        st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+        # Spacing handled cleanly via card margins
         
         # BOX 2
         col1, col2 = st.columns([1, 3], gap="large")
@@ -435,7 +439,7 @@ def render_landing_page():
         with col2:
             st.markdown("<div class='marker-2'></div><div class='card-heading'>Behavior Analysis</div><div class='card-text'>The system dynamically analyzes user responses through video and audio inputs, capturing key behavioral cues such as facial expressions, tone, and speaking patterns. Using AI-driven models, it evaluates performance instantly and provides structured feedback to guide improvement step by step.</div>", unsafe_allow_html=True)
             
-        st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+        # Spacing handled cleanly via card margins
         
         # BOX 3
         col1, col2 = st.columns([3, 1], gap="large")
@@ -474,7 +478,7 @@ def render_landing_page():
             </svg>
             </div>""", unsafe_allow_html=True)
         
-        st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+        # Spacing handled cleanly via card margins
         
         # BOX 4
         col1, col2 = st.columns([1, 3], gap="large")
@@ -513,7 +517,7 @@ def render_landing_page():
         with col2:
             st.markdown("<div class='marker-4'></div><div class='card-heading'>Interview Practice</div><div class='card-text'>Practicing interviews in a simulated environment helps reduce anxiety and builds confidence. By identifying common mistakes and improving communication skills, users can approach real interviews with clarity, preparation, and a stronger presence.</div>", unsafe_allow_html=True)
         
-        st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+        # Spacing handled cleanly via card margins
         
         # BOX 5
         col1, col2 = st.columns([3, 1], gap="large")
@@ -742,7 +746,7 @@ def render_mode_selection_page():
             st.rerun()
             return
 
-    st.markdown('<div class="page-section" style="padding-top: 0.5rem;">', unsafe_allow_html=True)
+    st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
     st.title("🎯 Choose Your Interview Mode")
     st.subheader("Select the type of interview you want to practice and improve your skills.")
     st.write("---")
@@ -1001,7 +1005,7 @@ def render_technical_setup_page():
             st.rerun()
             return
 
-    st.markdown('<div class="page-section" style="padding-top: 0.5rem;">', unsafe_allow_html=True)
+    st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
     st.title("⚙️ Configure Your Technical Interview")
     st.subheader("Choose your technical domain and skills to generate an interview tailored to your knowledge.")
     st.write("---")
@@ -1242,9 +1246,7 @@ def render_technical_setup_page():
     st.markdown('</div>', unsafe_allow_html=True)
 
 def render_technical_interview_page():
-
     """
-    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     Renders the exact automated Step 4 Real-Time Technical Interview Interface:
     Stage 1: Question displayed & spoken completely via TTS.
     Stage 2: Exactly 3-second delay & countdown (camera & mic inactive).
@@ -1252,6 +1254,7 @@ def render_technical_interview_page():
     Stage 5: Automatic stop at 0s, processing frames & audio, saving answer.
     Stage 6: Automatic progression to next question (or submission on final question).
     """
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     if not st.session_state.technical_questions:
         st.session_state.current_page = 'technical_setup'
         st.rerun()
@@ -1270,7 +1273,7 @@ def render_technical_interview_page():
 
     # Hardware verification check before Question 1
     if curr_idx == 0 and not st.session_state.technical_hardware_verified:
-        st.markdown('<div class="page-section" style="padding-top: 0.5rem;">', unsafe_allow_html=True)
+        st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
         st.title("📹 Camera & Microphone Verification")
         st.subheader("Verifying your camera and microphone readiness for the live technical interview.")
         st.write("---")
@@ -2475,6 +2478,7 @@ def render_interview_page():
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     if st.button("← Go to Home", type="secondary"):
         st.session_state.current_page = 'landing'
+        st.session_state.current_tab = 'Home'
         st.rerun()
         return
 
