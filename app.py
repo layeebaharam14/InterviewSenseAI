@@ -46,17 +46,9 @@ def get_question_duration(question):
         return 20
     return 15
 
-def get_technical_question_duration(q_data):
-    """Calculates appropriate answer duration in seconds based on difficulty and question type."""
-    q_type = str(q_data.get("question_type", "")).lower()
-    difficulty = str(q_data.get("difficulty", "")).lower()
-    if "coding" in q_type:
-        return 90
-    if "advanced" in difficulty or "scenario" in q_type or "system design" in q_type:
-        return 60
-    if "intermediate" in difficulty or "practical" in q_type:
-        return 45
-    return 30
+def get_technical_question_duration(q_data=None):
+    """Fixed 15-second answer duration for all technical interview questions."""
+    return 15
 
 def get_camera():
     # Try cameras 0 (default), 1, 2 with CAP_DSHOW for Windows compatibility
@@ -1388,7 +1380,14 @@ def render_technical_setup_page():
     st.markdown('</div>', unsafe_allow_html=True)
 
 def render_technical_interview_page():
-    """Renders the real-time Step 4 Technical Interview Question, Camera, Audio and Answer Review Interface."""
+    """
+    Renders the exact automated Step 4 Real-Time Technical Interview Interface:
+    Stage 1: Question displayed & spoken completely via TTS.
+    Stage 2: Exactly 3-second delay & countdown (camera & mic inactive).
+    Stage 3 & 4: Automatic camera & microphone activation for a fixed 15-second timer.
+    Stage 5: Automatic stop at 0s, processing frames & audio, saving answer.
+    Stage 6: Automatic progression to next question (or submission on final question).
+    """
     if not st.session_state.technical_questions:
         st.session_state.current_page = 'technical_setup'
         st.rerun()
@@ -1399,11 +1398,13 @@ def render_technical_interview_page():
 
     # Check if all questions are completed
     if curr_idx >= total_q:
+        st.session_state.technical_interview_completed = True
+        st.session_state.technical_interview_submitted = True
         st.session_state.current_page = 'technical_submission'
         st.rerun()
         return
 
-    # 1. Hardware verification before starting question 1
+    # Hardware verification check before Question 1
     if curr_idx == 0 and not st.session_state.technical_hardware_verified:
         st.markdown('<div class="page-section" style="padding-top: 0.5rem;">', unsafe_allow_html=True)
         st.title("📹 Camera & Microphone Verification")
@@ -1456,7 +1457,7 @@ def render_technical_interview_page():
 
     curr_q_num = curr_idx + 1
     curr_q_data = st.session_state.technical_questions[curr_idx]
-    record_duration = get_technical_question_duration(curr_q_data)
+    record_duration = 15  # Exactly 15-second fixed timer for all questions
     st.session_state.technical_recording_duration = record_duration
 
     # Calculate answered and unanswered stats
@@ -1497,7 +1498,7 @@ def render_technical_interview_page():
     st.markdown(f"<div style='text-align: center; color: #94a3b8; font-size: 1.05rem; margin-bottom: 0.5rem;'>Question <strong>{curr_q_num}</strong> of <strong>{total_q}</strong></div>", unsafe_allow_html=True)
     st.progress(curr_q_num / total_q)
 
-    # Scoped styling for technical interview cards
+    # Scoped styling
     st.markdown("""
     <style>
     .tech-question-card {
@@ -1533,18 +1534,10 @@ def render_technical_interview_page():
         margin-bottom: 6px;
         text-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
     }
-    .answer-header-box {
-        background: rgba(15, 23, 42, 0.7);
-        border-left: 4px solid #38bdf8;
-        padding: 10px 16px;
-        border-radius: 4px;
-        margin-bottom: 12px;
-        text-align: left;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-    # Render Question Card with Metadata Badges
+    # Question metadata & Text
     q_domain = curr_q_data.get("domain", st.session_state.technical_domain)
     q_skill = curr_q_data.get("skill", "General")
     q_diff = curr_q_data.get("difficulty", st.session_state.technical_difficulty)
@@ -1558,7 +1551,7 @@ def render_technical_interview_page():
             <span class="meta-tag meta-tag-skill">{q_skill}</span>
             <span class="meta-tag meta-tag-diff">{q_diff}</span>
             <span class="meta-tag meta-tag-type">{q_type}</span>
-            <span class="meta-tag" style="background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3);">⏱️ {record_duration}s Limit</span>
+            <span class="meta-tag" style="background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3);">⏱️ 15s Fixed Duration</span>
         </div>
         <div class="tech-q-text">
             Q{curr_q_num}: {q_text}
@@ -1566,46 +1559,39 @@ def render_technical_interview_page():
     </div>
     """, unsafe_allow_html=True)
 
-    stage = st.session_state.get("technical_interview_stage", "QUESTION_DISPLAY")
-
-    # STAGE 1 & 2: QUESTION_DISPLAY & QUESTION_SPEAKING
-    if stage in ("QUESTION_DISPLAY", "QUESTION_SPEAKING"):
-        spoken_key = f"tech_spoken_{curr_idx}"
-        if not st.session_state.get(spoken_key, False):
-            speak_question(q_text)
-            st.session_state[spoken_key] = True
-
-        st.markdown("""
-        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 20px; margin: 15px 0; text-align: center;">
-            <p style="color: #cbd5e1; font-size: 1.05rem; margin-bottom: 8px;">
-                🎧 <strong>Question audio is playing.</strong> Listen carefully to the question and organize your technical points.
+    # =========================================================================
+    # STAGE 1: DISPLAY QUESTION & SPEAK AUDIO COMPLETELY
+    # =========================================================================
+    spoken_key = f"tech_spoken_{curr_idx}"
+    if not st.session_state.get(spoken_key, False):
+        audio_status = st.empty()
+        audio_status.markdown("""
+        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 16px; margin: 12px 0; text-align: center;">
+            <p style="color: #38bdf8; font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">
+                🔊 Speaking Question... Please listen carefully.
             </p>
-            <p style="color: #94a3b8; font-size: 0.92rem; margin-bottom: 16px;">
-                When you are ready, click below to trigger the 3-second countdown and start your live webcam & microphone answer.
+            <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 0;">
+                Camera and microphone remain inactive until audio playback finishes.
             </p>
         </div>
         """, unsafe_allow_html=True)
 
-        col_act1, col_act2, col_act3 = st.columns([1.5, 1.2, 1])
-        with col_act1:
-            if st.button("🎙️ I'm Ready — Start Live Recording", key=f"btn_start_live_{curr_idx}", type="primary", use_container_width=True):
-                st.session_state.technical_interview_stage = "COUNTDOWN"
-                st.rerun()
-        with col_act2:
-            if st.button("✍️ Type / Edit Directly", key=f"btn_skip_to_type_{curr_idx}", type="secondary", use_container_width=True):
-                st.session_state.technical_interview_stage = "ANSWER_REVIEW"
-                st.rerun()
-        with col_act3:
-            if st.button("🔊 Replay Audio", key=f"btn_replay_audio_{curr_idx}", type="secondary", use_container_width=True):
-                st.session_state[spoken_key] = False
-                st.rerun()
+        audio_duration = speak_question(q_text)
+        st.session_state[spoken_key] = True
 
-    # STAGE 3: COUNTDOWN
-    elif stage == "COUNTDOWN":
+        # Wait for audio to finish playing completely in user browser before countdown
+        time.sleep(audio_duration + 0.3)
+        audio_status.empty()
+
+    # =========================================================================
+    # STAGE 2: EXACT THREE-SECOND COUNTDOWN (CAMERA & MIC INACTIVE)
+    # =========================================================================
+    countdown_key = f"tech_countdown_done_{curr_idx}"
+    if not st.session_state.get(countdown_key, False):
         countdown_box = st.empty()
-        for count in range(3, 0, -1):
+        for count in (3, 2, 1):
             countdown_box.markdown(f"""
-            <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 2px solid #facc15; border-radius: 16px; padding: 35px 20px; text-align: center; margin: 20px auto; max-width: 480px; box-shadow: 0 0 30px rgba(250, 204, 21, 0.25);">
+            <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 2px solid #facc15; border-radius: 16px; padding: 35px 20px; text-align: center; margin: 18px auto; max-width: 480px; box-shadow: 0 0 30px rgba(250, 204, 21, 0.25);">
                 <div style="font-size: 4rem; font-weight: 900; color: #facc15; text-shadow: 0 0 20px rgba(250, 204, 21, 0.5);">
                     {count}
                 </div>
@@ -1613,269 +1599,124 @@ def render_technical_interview_page():
                     Get Ready to Answer
                 </div>
                 <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">
-                    Look directly at the camera and speak clearly into your microphone.
+                    Camera and microphone will activate automatically in {count}s.
                 </div>
             </div>
             """, unsafe_allow_html=True)
             time.sleep(1.0)
 
         countdown_box.empty()
-        st.session_state.technical_interview_stage = "RECORDING"
-        st.session_state.technical_recording_start_time = time.time()
-        st.rerun()
+        st.session_state[countdown_key] = True
 
-    # STAGE 4: RECORDING
-    elif stage == "RECORDING":
-        st.markdown("""
-        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px;">
-            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px #ef4444;"></span>
-            <span style="color: #ef4444; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px;">LIVE TECHNICAL RECORDING IN PROGRESS</span>
-        </div>
-        """, unsafe_allow_html=True)
+    # =========================================================================
+    # STAGE 3 & 4: AUTOMATIC CAMERA & MICROPHONE ACTIVATION (FIXED 15s TIMER)
+    # =========================================================================
+    st.markdown("""
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px;">
+        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px #ef4444;"></span>
+        <span style="color: #ef4444; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px;">🔴 LIVE RECORDING IN PROGRESS — 15 SECONDS</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-        camera_placeholder = st.empty()
-        timer_placeholder = st.empty()
+    camera_placeholder = st.empty()
+    timer_placeholder = st.empty()
 
-        # Start concurrent microphone capture in background thread
-        audio_result = []
-        audio_thread = threading.Thread(target=record_and_transcribe, args=(record_duration, audio_result))
-        audio_thread.start()
+    # Activate microphone recording concurrently in background thread
+    audio_result = []
+    audio_thread = threading.Thread(target=record_and_transcribe, args=(15, audio_result))
+    audio_thread.start()
 
-        # Start camera capture
-        camera = get_camera()
-        if camera is None:
-            camera_placeholder.warning("⚠️ Webcam could not be accessed. Recording your audio response...")
+    # Activate camera preview
+    camera = get_camera()
+    if camera is None:
+        camera_placeholder.warning("⚠️ Webcam could not be accessed. Recording your audio response...")
 
-        start_time = time.time()
-        sampled_frames = []
+    start_time = time.time()
+    sampled_frames = []
 
-        while time.time() - start_time < record_duration:
-            elapsed = time.time() - start_time
-            remaining = max(0, int(record_duration - elapsed))
-
-            if camera is not None:
-                ret, frame = camera.read()
-                if not ret:
-                    break
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                camera_placeholder.image(rgb_frame, channels="RGB", use_container_width=True)
-
-                # Sample 1 frame per second for MediaPipe facial & behavioral analysis
-                if int(elapsed) >= len(sampled_frames):
-                    sampled_frames.append(rgb_frame)
-
-            # Update live timer UI
-            pct_remaining = (remaining / record_duration) * 100.0
-            timer_color = "#4ade80" if pct_remaining > 50 else ("#facc15" if pct_remaining > 20 else "#ef4444")
-            timer_placeholder.markdown(f"""
-            <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 20px; margin: 12px 0; text-align: center;">
-                <div style="color: {timer_color}; font-size: 1.45rem; font-weight: 800; margin-bottom: 4px;">
-                    ⏳ Time Remaining: {remaining}s / {record_duration}s
-                </div>
-                <div style="color: #94a3b8; font-size: 0.85rem;">
-                    Speak continuously and explain your technical reasoning clearly.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            time.sleep(0.04)
+    while time.time() - start_time < 15.0:
+        elapsed = time.time() - start_time
+        remaining = max(0, int(15.0 - elapsed))
 
         if camera is not None:
-            camera.release()
-        camera_placeholder.empty()
-        timer_placeholder.empty()
+            ret, frame = camera.read()
+            if not ret:
+                break
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            camera_placeholder.image(rgb_frame, channels="RGB", use_container_width=True)
 
-        # Store sampled frames for this question
-        st.session_state.technical_frames[curr_idx] = sampled_frames
+            # Sample 1 frame per second for MediaPipe facial & behavioral analysis
+            if int(elapsed) >= len(sampled_frames):
+                sampled_frames.append(rgb_frame)
 
-        # Move to processing stage
-        with st.spinner("🧠 Processing speech transcription and facial behavioral analysis..."):
-            audio_thread.join()
-            transcribed_text = audio_result[0] if audio_result else ""
-
-            # Check if error or empty speech
-            if transcribed_text.startswith("ERROR:"):
-                st.session_state.last_audio_error = transcribed_text
-                transcribed_clean = ""
-            else:
-                st.session_state.last_audio_error = None
-                transcribed_clean = transcribed_text.strip()
-
-            # Merge or set candidate answer
-            input_key = f"tech_ans_input_{curr_idx}"
-            prev_ans = st.session_state.get(input_key, "").strip()
-            if transcribed_clean:
-                if prev_ans:
-                    final_ans = f"{prev_ans}\n\n[Voice Transcript]: {transcribed_clean}"
-                else:
-                    final_ans = transcribed_clean
-                st.session_state[input_key] = final_ans
-                save_current_technical_answer(curr_idx, method="voice")
-            elif prev_ans:
-                save_current_technical_answer(curr_idx, method="text")
-
-            # Process MediaPipe video analysis on sampled frames
-            if sampled_frames:
-                v_res = aggregate_video_analysis(sampled_frames)
-                st.session_state.technical_video_results[curr_idx] = v_res
-
-        st.session_state.technical_interview_stage = "ANSWER_REVIEW"
-        st.rerun()
-
-    # STAGE 5: ANSWER_REVIEW
-    elif stage == "ANSWER_REVIEW":
-        input_key = f"tech_ans_input_{curr_idx}"
-        if input_key not in st.session_state:
-            st.session_state[input_key] = st.session_state.technical_answers.get(curr_idx, {}).get("answer_text", "")
-
-        # Display Behavioral Analysis Snapshot Card if frames were analyzed
-        v_res = st.session_state.technical_video_results.get(curr_idx)
-        if v_res:
-            ec_color = "#4ade80" if v_res.get("eye_contact") == "good" else "#facc15"
-            ec_label = "Good Eye Contact" if v_res.get("eye_contact") == "good" else "Off-Center / Averted"
-            presence_val = v_res.get("face_presence_pct", 0.0)
-            posture_val = str(v_res.get("posture", "unavailable")).capitalize()
-            gaze_val = str(v_res.get("gaze_direction", "direct")).capitalize()
-
-            st.markdown(f"""
-            <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 14px 18px; margin: 10px 0 16px 0;">
-                <div style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 8px;">
-                    📊 Delivery & Behavioral Analysis (Question {curr_q_num})
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
-                    <div style="background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 8px;">
-                        <div style="color: #94a3b8; font-size: 0.75rem;">Eye Contact</div>
-                        <div style="color: {ec_color}; font-weight: 700; font-size: 0.95rem;">{ec_label}</div>
-                    </div>
-                    <div style="background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 8px;">
-                        <div style="color: #94a3b8; font-size: 0.75rem;">Face Presence</div>
-                        <div style="color: #38bdf8; font-weight: 700; font-size: 0.95rem;">{presence_val}%</div>
-                    </div>
-                    <div style="background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 8px;">
-                        <div style="color: #94a3b8; font-size: 0.75rem;">Head Gaze</div>
-                        <div style="color: #c084fc; font-weight: 700; font-size: 0.95rem;">{gaze_val}</div>
-                    </div>
-                    <div style="background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 8px;">
-                        <div style="color: #94a3b8; font-size: 0.75rem;">Posture Alignment</div>
-                        <div style="color: #facc15; font-weight: 700; font-size: 0.95rem;">{posture_val}</div>
-                    </div>
-                </div>
+        # Update countdown display (15 down to 0)
+        timer_color = "#4ade80" if remaining > 7 else ("#facc15" if remaining > 3 else "#ef4444")
+        timer_placeholder.markdown(f"""
+        <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 20px; margin: 12px 0; text-align: center;">
+            <div style="color: {timer_color}; font-size: 1.55rem; font-weight: 800; margin-bottom: 4px;">
+                ⏳ Time Remaining: {remaining}s / 15s
             </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="answer-header-box">
-            <span style="color: #38bdf8; font-weight: 700; font-size: 1.1rem;">✍️ Review & Refine Your Answer</span>
-            <span style="color: #94a3b8; font-size: 0.9rem; margin-left: 10px;">Review your transcribed answer below. You can freely edit, add code snippets, or expand your technical points before proceeding.</span>
+            <div style="color: #94a3b8; font-size: 0.85rem;">
+                Speak continuously and explain your technical reasoning clearly.
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        user_answer = st.text_area(
-            "Candidate Response:",
-            height=200,
-            placeholder="Type your technical explanation or code snippet here...",
-            key=input_key,
-            label_visibility="collapsed"
-        )
+        time.sleep(0.04)
 
-        curr_answer_clean = user_answer.strip()
-        c_info, c_save, c_re_rec = st.columns([2.5, 1, 1.2])
-        with c_info:
-            if curr_answer_clean:
-                word_count = len(curr_answer_clean.split())
-                method = st.session_state.technical_answers.get(curr_idx, {}).get("answer_method", "text")
-                st.markdown(f"<div style='padding-top: 8px; color: #4ade80; font-size: 0.92rem;'>✅ Answer saved for Question {curr_q_num} ({word_count} words • Method: {method.capitalize()})</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div style='padding-top: 8px; color: #fb923c; font-size: 0.92rem;'>⚪ No answer saved yet for Question {curr_q_num}.</div>", unsafe_allow_html=True)
-        with c_save:
-            if st.button("💾 Save Answer", key=f"btn_save_{curr_idx}", type="secondary", use_container_width=True):
-                save_current_technical_answer(curr_idx)
-                st.success("Answer saved!")
-                st.rerun()
-        with c_re_rec:
-            if st.button("🔄 Re-record Voice", key=f"btn_rerecord_{curr_idx}", type="secondary", use_container_width=True):
-                st.session_state.technical_interview_stage = "COUNTDOWN"
-                st.rerun()
+    # =========================================================================
+    # STAGE 5: AUTOMATIC RECORDING STOP & PROCESSING
+    # =========================================================================
+    if camera is not None:
+        camera.release()
+    camera_placeholder.empty()
+    timer_placeholder.empty()
 
-        # Submission Confirmation Prompt
-        if st.session_state.confirm_submit_technical:
-            st.markdown('<div style="background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; border-radius: 12px; padding: 22px; margin: 24px 0; box-shadow: 0 4px 25px rgba(56, 189, 248, 0.25);">', unsafe_allow_html=True)
-            if unanswered_count > 0:
-                st.warning(f"⚠️ You have **{unanswered_count} unanswered question(s)** out of **{total_q}**. Are you sure you want to submit your technical interview now?")
-            else:
-                st.success("🎉 All questions have recorded answers! Ready to submit your technical interview?")
-            
-            col_s_yes, col_s_no = st.columns(2)
-            with col_s_yes:
-                if st.button("✓ Yes, Submit Interview Now", key="confirm_submit_yes_btn", type="primary", use_container_width=True):
-                    save_current_technical_answer(curr_idx)
-                    st.session_state.confirm_submit_technical = False
-                    st.session_state.technical_interview_submitted = True
-                    st.session_state.technical_interview_completed = True
-                    st.session_state.current_page = 'technical_submission'
-                    st.rerun()
-            with col_s_no:
-                if st.button("Cancel & Continue Reviewing", key="confirm_submit_no_btn", type="secondary", use_container_width=True):
-                    st.session_state.confirm_submit_technical = False
-                    st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+    with st.spinner(f"🧠 Processing Question {curr_q_num} answer and visual analysis..."):
+        audio_thread.join()
+        transcribed_text = audio_result[0] if audio_result else ""
 
-        # Exit Confirmation Prompt
-        if st.session_state.confirm_end_technical:
-            st.markdown('<div style="background: rgba(15, 23, 42, 0.95); border: 2px solid #f59e0b; border-radius: 12px; padding: 20px; margin: 20px 0;">', unsafe_allow_html=True)
-            st.warning("⚠️ Are you sure you want to exit without finishing? Your recorded answers will be submitted as-is.")
-            col_yes, col_no = st.columns(2)
-            with col_yes:
-                if st.button("Yes, End & View Summary", key="confirm_end_yes", type="primary", use_container_width=True):
-                    save_current_technical_answer(curr_idx)
-                    st.session_state.confirm_end_technical = False
-                    st.session_state.technical_interview_completed = True
-                    st.session_state.technical_interview_submitted = True
-                    st.session_state.current_page = 'technical_submission'
-                    st.rerun()
-            with col_no:
-                if st.button("Cancel", key="confirm_end_no", type="secondary", use_container_width=True):
-                    st.session_state.confirm_end_technical = False
-                    st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        if transcribed_text.startswith("ERROR:"):
+            st.session_state.last_audio_error = transcribed_text
+            transcribed_clean = ""
+        else:
+            st.session_state.last_audio_error = None
+            transcribed_clean = transcribed_text.strip()
 
-        st.write("---")
+        # Save candidate answer
+        input_key = f"tech_ans_input_{curr_idx}"
+        prev_ans = st.session_state.get(input_key, "").strip()
+        if transcribed_clean:
+            final_ans = f"{prev_ans}\n\n[Voice Transcript]: {transcribed_clean}" if prev_ans else transcribed_clean
+            st.session_state[input_key] = final_ans
+            save_current_technical_answer(curr_idx, method="voice")
+        elif prev_ans:
+            save_current_technical_answer(curr_idx, method="text")
+        else:
+            save_current_technical_answer(curr_idx, method="voice")
 
-        # Bottom Navigation Controls
-        col_prev, col_middle, col_next = st.columns([1.2, 1, 1.2])
+        # MediaPipe video analysis on captured frames
+        st.session_state.technical_frames[curr_idx] = sampled_frames
+        if sampled_frames:
+            v_res = aggregate_video_analysis(sampled_frames)
+            st.session_state.technical_video_results[curr_idx] = v_res
 
-        with col_prev:
-            if st.button("← Previous Question", key="btn_prev_tech_q", disabled=(curr_idx == 0), type="secondary", use_container_width=True):
-                save_current_technical_answer(curr_idx)
-                st.session_state.technical_question_index -= 1
-                st.session_state.technical_interview_stage = "ANSWER_REVIEW"
-                st.session_state.confirm_end_technical = False
-                st.session_state.confirm_submit_technical = False
-                st.rerun()
-
-        with col_middle:
-            if not st.session_state.confirm_end_technical and not st.session_state.confirm_submit_technical:
-                if st.button("⏹ End Interview", key="btn_end_tech_q", type="secondary", use_container_width=True):
-                    save_current_technical_answer(curr_idx)
-                    st.session_state.confirm_end_technical = True
-                    st.session_state.confirm_submit_technical = False
-                    st.rerun()
-
-        with col_next:
-            if curr_idx < total_q - 1:
-                if st.button("Next Question →", key="btn_next_tech_q", type="primary", use_container_width=True):
-                    save_current_technical_answer(curr_idx)
-                    st.session_state.technical_question_index += 1
-                    st.session_state.technical_interview_stage = "QUESTION_DISPLAY"
-                    st.session_state.confirm_end_technical = False
-                    st.session_state.confirm_submit_technical = False
-                    st.rerun()
-            else:
-                if st.button("Submit Interview 🚀", key="btn_finish_tech_q", type="primary", use_container_width=True):
-                    save_current_technical_answer(curr_idx)
-                    st.session_state.confirm_submit_technical = True
-                    st.session_state.confirm_end_technical = False
-                    st.rerun()
+    # =========================================================================
+    # STAGE 6: AUTOMATIC NEXT QUESTION TRANSITION
+    # =========================================================================
+    if curr_idx + 1 < total_q:
+        st.success(f"✅ Question {curr_q_num} recorded! Moving to Question {curr_q_num + 1}...")
+        time.sleep(1.2)
+        st.session_state.technical_question_index += 1
+        st.session_state.technical_interview_stage = "QUESTION_DISPLAY"
+        st.rerun()
+    else:
+        st.success("🎉 All technical questions completed! Proceeding to submission summary...")
+        time.sleep(1.5)
+        st.session_state.technical_interview_completed = True
+        st.session_state.technical_interview_submitted = True
+        st.session_state.current_page = 'technical_submission'
+        st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 

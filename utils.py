@@ -597,15 +597,26 @@ def speak_question(text):
     """
     Generates TTS audio for the given text using pyttsx3 and plays it automatically in Streamlit.
     Saving to a file avoids Streamlit threading/blocking issues with pyttsx3.
+    Returns the exact audio duration in seconds.
     """
+    import wave
     filename = f"temp_{uuid.uuid4().hex}.wav"
+    audio_duration = 0.0
     try:
         engine = pyttsx3.init()
-        # Set properties (optional)
         engine.setProperty('rate', 150)
         engine.save_to_file(text, filename)
         engine.runAndWait()
         
+        # Read exact wave duration
+        try:
+            with wave.open(filename, 'r') as wf:
+                frames = wf.getnframes()
+                rate = wf.getframerate()
+                audio_duration = frames / float(rate)
+        except Exception:
+            audio_duration = max(2.5, len(text.split()) / 2.5)
+
         # Read the audio file and create an HTML audio element with autoplay
         with open(filename, "rb") as f:
             audio_bytes = f.read()
@@ -618,8 +629,8 @@ def speak_question(text):
         st.markdown(audio_html, unsafe_allow_html=True)
     except Exception as e:
         st.error(f"TTS Error: {e}")
+        audio_duration = max(2.5, len(text.split()) / 2.5)
     finally:
-        # Safely cleanup engine and temp file
         try:
             if 'engine' in locals() and engine is not None:
                 engine.stop()
@@ -631,3 +642,4 @@ def speak_question(text):
                 os.remove(filename)
             except Exception:
                 pass
+    return max(1.5, audio_duration)
