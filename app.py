@@ -189,7 +189,7 @@ def init_session_state():
     if 'technical_recording_start_time' not in st.session_state:
         st.session_state.technical_recording_start_time = None
     if 'technical_recording_duration' not in st.session_state:
-        st.session_state.technical_recording_duration = 45
+        st.session_state.technical_recording_duration = 15
     if 'technical_frames' not in st.session_state:
         st.session_state.technical_frames = {}
     if 'technical_video_results' not in st.session_state:
