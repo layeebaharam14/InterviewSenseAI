@@ -14,57 +14,115 @@ def _read_image_as_data_url(path: str) -> str | None:
     except Exception:
         return None
 
-def apply_css():
-    """Injects custom CSS for the dark blue gradient theme and UI styling."""
-    bg_path = os.path.join(os.path.dirname(__file__), "assets", "home_bg.png")
-    bg_data_url = _read_image_as_data_url(bg_path)
+@st.cache_data
+def _get_background_video_base64() -> str | None:
+    """Reads and caches background video as base64 string to keep app fast and smooth."""
+    video_paths = [
+        os.path.join(os.path.dirname(__file__), "assets", "background_video.mp4"),
+        os.path.join(os.path.dirname(__file__), "WhatsApp Video 2026-10-30 at 12.12.21 PM.mp4"),
+    ]
+    for p in video_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
+            except Exception:
+                pass
+    return None
 
-    background_css = (
-        f"""
-            background-color: #020617 !important;
-            background-image:
-                linear-gradient(rgba(2, 6, 23, 0.55), rgba(2, 6, 23, 0.78)),
-                url('{bg_data_url}') !important;
-            background-size: cover !important;
-            background-position: center !important;
-            background-repeat: no-repeat !important;
+def apply_css():
+    """Injects custom CSS for the dark blue gradient theme, background video, and UI styling."""
+    video_b64 = _get_background_video_base64()
+
+    if video_b64:
+        st.markdown(
+            f"""
+            <video id="bg-video" autoplay loop muted playsinline>
+                <source src="data:video/mp4;base64,{video_b64}" type="video/mp4">
+            </video>
+            <div id="video-overlay"></div>
+            """,
+            unsafe_allow_html=True
+        )
+        background_css = """
+            background-color: transparent !important;
+            background: transparent !important;
         """
-        if bg_data_url
-        else """
-            background-color: #020617 !important;
-            background-image:
-                radial-gradient(circle at 85% 22%, rgba(56, 189, 248, 0.18) 0%, rgba(56, 189, 248, 0.0) 55%),
-                radial-gradient(circle at 12% 45%, rgba(192, 132, 252, 0.14) 0%, rgba(192, 132, 252, 0.0) 60%),
-                radial-gradient(circle at 18% 25%, rgba(56, 189, 248, 0.10) 0%, rgba(56, 189, 248, 0.0) 35%),
-                radial-gradient(circle at 50% 35%, #061938 0%, #020617 70%),
-                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.10) 0 1px, transparent 2px),
-                radial-gradient(circle at 75% 40%, rgba(255,255,255,0.08) 0 1px, transparent 2px),
-                radial-gradient(circle at 40% 60%, rgba(255,255,255,0.06) 0 1px, transparent 2px),
-                radial-gradient(circle at 60% 20%, rgba(255,255,255,0.06) 0 1px, transparent 2px);
-            background-size:
-                cover,
-                cover,
-                cover,
-                cover,
-                420px 420px,
-                520px 520px,
-                680px 680px,
-                760px 760px;
-            background-position:
-                center,
-                center,
-                center,
-                center,
-                0 0,
-                80px 120px,
-                120px 40px,
-                30px 200px;
-            background-repeat: no-repeat !important;
-        """
-    )
+    else:
+        bg_path = os.path.join(os.path.dirname(__file__), "assets", "home_bg.png")
+        bg_data_url = _read_image_as_data_url(bg_path)
+        background_css = (
+            f"""
+                background-color: #020617 !important;
+                background-image:
+                    linear-gradient(rgba(2, 6, 23, 0.55), rgba(2, 6, 23, 0.78)),
+                    url('{bg_data_url}') !important;
+                background-size: cover !important;
+                background-position: center !important;
+                background-repeat: no-repeat !important;
+            """
+            if bg_data_url
+            else """
+                background-color: #020617 !important;
+                background-image:
+                    radial-gradient(circle at 85% 22%, rgba(56, 189, 248, 0.18) 0%, rgba(56, 189, 248, 0.0) 55%),
+                    radial-gradient(circle at 12% 45%, rgba(192, 132, 252, 0.14) 0%, rgba(192, 132, 252, 0.0) 60%),
+                    radial-gradient(circle at 18% 25%, rgba(56, 189, 248, 0.10) 0%, rgba(56, 189, 248, 0.0) 35%),
+                    radial-gradient(circle at 50% 35%, #061938 0%, #020617 70%),
+                    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.10) 0 1px, transparent 2px),
+                    radial-gradient(circle at 75% 40%, rgba(255,255,255,0.08) 0 1px, transparent 2px),
+                    radial-gradient(circle at 40% 60%, rgba(255,255,255,0.06) 0 1px, transparent 2px),
+                    radial-gradient(circle at 60% 20%, rgba(255,255,255,0.06) 0 1px, transparent 2px);
+                background-size:
+                    cover,
+                    cover,
+                    cover,
+                    cover,
+                    420px 420px,
+                    520px 520px,
+                    680px 680px,
+                    760px 760px;
+                background-position:
+                    center,
+                    center,
+                    center,
+                    center,
+                    0 0,
+                    80px 120px,
+                    120px 40px,
+                    30px 200px;
+                background-repeat: no-repeat !important;
+            """
+        )
 
     st.markdown("""
         <style>
+        /* FIXED BACKGROUND VIDEO ON CONTINUOUS LOOP */
+        #bg-video {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            min-width: 100% !important;
+            min-height: 100% !important;
+            object-fit: cover !important;
+            z-index: -999999 !important;
+            pointer-events: none !important;
+        }
+
+        /* OVERLAY TO PRESERVE DARK NAVY THEME AND TEXT READABILITY */
+        #video-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: linear-gradient(rgba(2, 6, 23, 0.65), rgba(2, 6, 23, 0.82)) !important;
+            z-index: -999998 !important;
+            pointer-events: none !important;
+        }
+
         /* 1 & 2. FULL BACKGROUND COLOR FIX & REMOVE TOP WHITE GAP */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
     """ + background_css + """
