@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 
 # Import internal modules
-from utils import apply_css, speak_question
+from utils import scroll_to_top, apply_css, speak_question
 from video_analysis import aggregate_video_analysis
 from audio_analysis import analyze_audio_behavior
 from scoring import calculate_scores
@@ -1166,8 +1166,8 @@ def render_technical_setup_page():
         background: linear-gradient(145deg, #0b1120, #0f172a);
         border: 1px solid rgba(56, 189, 248, 0.2);
         border-radius: 14px;
-        padding: 22px 24px;
-        margin-bottom: 24px;
+        padding: 16px 20px;
+        margin-bottom: 14px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
     }
     .setup-step-header {
@@ -1505,8 +1505,8 @@ def render_technical_interview_page():
         background: linear-gradient(145deg, #0b1120, #0f172a);
         border: 1px solid rgba(56, 189, 248, 0.3);
         border-radius: 16px;
-        padding: 24px 22px;
-        margin: 1rem auto 1.2rem auto;
+        padding: 18px 20px;
+        margin: 0.5rem auto 0.8rem auto;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
         text-align: left;
     }
@@ -1741,7 +1741,7 @@ def render_technical_submission_page():
 
     # Session Summary Card
     st.markdown(f"""
-    <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 28px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45); max-width: 820px; margin: 1.5rem auto; text-align: left;">
+    <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 20px 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45); max-width: 820px; margin: 0.8rem auto 1.2rem auto; text-align: left;">
         <div style="text-align: center; font-size: 3.2rem; margin-bottom: 8px;">📋</div>
         <h2 style="color: #38bdf8; text-align: center; margin-bottom: 6px;">Submission Summary</h2>
         <p style="text-align: center; color: #94a3b8; font-size: 1rem; margin-bottom: 20px;">
@@ -1883,7 +1883,7 @@ def render_technical_results_page():
 
     # 2. Overall Performance & Radial Score Visualization
     st.markdown(f"""
-    <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 20px; padding: 32px 28px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5); max-width: 860px; margin: 1rem auto 2rem auto;">
+    <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 20px; padding: 22px 24px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5); max-width: 860px; margin: 0.5rem auto 1.2rem auto;">
         <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-around; gap: 20px;">
             <!-- Circular Score Gauge -->
             <div style="text-align: center;">
@@ -2513,6 +2513,16 @@ def render_results_page():
 def main():
     apply_css()
     init_session_state()
+
+    # Automatically scroll to top whenever the user changes page or questions
+    nav_key = (
+        st.session_state.get('current_page'),
+        st.session_state.get('technical_question_index', 0),
+        st.session_state.get('question_index', 0)
+    )
+    if st.session_state.get('_last_nav_position') != nav_key:
+        st.session_state['_last_nav_position'] = nav_key
+        scroll_to_top()
 
     # Simple router
     if st.session_state.current_page == 'landing':

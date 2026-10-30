@@ -153,9 +153,31 @@ def apply_css():
             flex-direction: column !important;
             justify-content: flex-start !important;
             align-items: stretch !important;
-            padding: 5.5rem 1.5rem 3rem 1.5rem !important;
+            padding: 1.2rem 1.5rem 2rem 1.5rem !important;
             margin: 0 auto !important;
-            animation: fadeIn 0.5s ease-out;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* Hide 0-size component iframes used for scroll-to-top */
+        iframe[title="streamlit.components.v1.html"],
+        iframe[title="st.iframe"],
+        div[data-testid="stCustomComponentV1"] {
+            position: absolute !important;
+            width: 0px !important;
+            height: 0px !important;
+            border: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Clean separators */
+        hr {
+            margin-top: 0.8rem !important;
+            margin-bottom: 0.8rem !important;
+            border: 0 !important;
+            border-top: 1px solid rgba(56, 189, 248, 0.2) !important;
         }
 
         /* SUBTLE ANIMATION */
@@ -295,8 +317,8 @@ def apply_css():
         /* 6. MEDIA QUERY FOR MOBILE RESPONSIVENESS */
         @media (max-width: 768px) {
             .main .block-container {
-                padding: 1.5rem !important; /* Proper padding on left and right */
-                padding-top: 5rem !important;
+                padding: 1.2rem 1rem !important; /* Proper padding on left and right */
+                padding-top: 1.2rem !important;
             }
             h1 { font-size: 2rem !important; }
             h2 { font-size: 1.75rem !important; }
@@ -342,8 +364,10 @@ def apply_css():
             scroll-behavior: smooth !important;
         }
         
-        .main .block-container {
-            padding-top: 5rem !important; /* Make room for fixed navbar */
+        /* Make room for fixed navbar only when the navbar is present (e.g. landing page) */
+        body:has(#home-bg-injector) .main .block-container,
+        .main:has(#home-bg-injector) .block-container {
+            padding-top: 4.2rem !important;
         }
         
         /* Hide navbar class */
@@ -449,14 +473,14 @@ def apply_css():
 
         /* SECTION STYLING */
         .page-section {
-            padding-top: 3rem;
-            padding-bottom: 3rem;
+            padding-top: 0.2rem !important;
+            padding-bottom: 0.8rem !important;
             width: 100%;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             flex-grow: 1;
-            animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .section-title {
@@ -583,7 +607,7 @@ def apply_css():
             font-size: 0.85rem;
             font-weight: 600;
             letter-spacing: 0.5px;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.6rem;
             text-align: center;
             width: fit-content;
             margin-left: auto;
@@ -643,3 +667,65 @@ def speak_question(text):
             except Exception:
                 pass
     return max(1.5, audio_duration)
+
+
+def scroll_to_top():
+    """
+    Forces the browser window and Streamlit scroll containers to scroll to the top immediately.
+    Also injects a persistent capture-phase click listener so clicking any button automatically
+    resets scroll position to top for the upcoming view.
+    """
+    try:
+        import streamlit.components.v1 as components
+        js_code = """
+        <script>
+        (function() {
+            function doScrollTop() {
+                try {
+                    const parentDoc = window.parent.document;
+                    const targets = [
+                        parentDoc.querySelector('[data-testid="stAppViewContainer"]'),
+                        parentDoc.querySelector('.main'),
+                        parentDoc.querySelector('section.main'),
+                        parentDoc.documentElement,
+                        parentDoc.body,
+                        window.parent
+                    ];
+                    targets.forEach(function(el) {
+                        if (el) {
+                            try { el.scrollTop = 0; } catch(e) {}
+                            try { if (el.scrollTo) el.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch(e) {}
+                        }
+                    });
+                } catch(e) {}
+            }
+
+            // Reset scroll immediately and on key animation frames
+            doScrollTop();
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(doScrollTop);
+            }
+            setTimeout(doScrollTop, 25);
+            setTimeout(doScrollTop, 100);
+            setTimeout(doScrollTop, 250);
+
+            // Attach persistent click listener to parent document
+            try {
+                const pDoc = window.parent.document;
+                if (!pDoc._stScrollHookAttached) {
+                    pDoc._stScrollHookAttached = true;
+                    pDoc.addEventListener('click', function(e) {
+                        const btn = e.target.closest('button') || e.target.closest('[role="button"]');
+                        if (btn) {
+                            setTimeout(doScrollTop, 30);
+                            setTimeout(doScrollTop, 150);
+                        }
+                    }, true);
+                }
+            } catch(e) {}
+        })();
+        </script>
+        """
+        components.html(js_code, height=0, width=0)
+    except Exception:
+        pass
