@@ -5,6 +5,8 @@ import time
 import random
 import threading
 import speech_recognition as sr
+import re
+from datetime import datetime
 
 # Import internal modules
 from utils import apply_css, speak_question
@@ -38,7 +40,9 @@ def get_question_duration(question):
         return 30
     if "challenge" in q or "situation" in q:
         return 25
-    if "strength" in q or "weakness" in q:
+    if "team" in q or "leadership" in q or "failure" in q:
+        return 25
+    if "strength" in q or "weakness" in q or "hire you" in q or "5 years" in q or "pressure" in q or "role" in q:
         return 20
     return 15
 
@@ -71,8 +75,8 @@ def record_and_transcribe(duration, result_container):
     r = sr.Recognizer()
     try:
         with sr.Microphone() as source:
-            # Slightly longer calibration for better accuracy
-            r.adjust_for_ambient_noise(source, duration=1.0)
+            # Fast ambient noise calibration to sync tightly with video recording
+            r.adjust_for_ambient_noise(source, duration=0.4)
             # Record exactly for the duration
             audio_data = r.record(source, duration=duration)
             try:
@@ -1235,11 +1239,12 @@ def render_technical_setup_page():
     for idx, skill in enumerate(available_skills):
         target_col = col_left if (idx % 2 == 0) else col_right
         chk_key = f"skill_chk_{st.session_state.technical_domain}_{skill}"
+        if chk_key not in st.session_state:
+            st.session_state[chk_key] = (skill in st.session_state.technical_skills)
         
-        # Checkbox state matches technical_skills session state
+        # Checkbox bound directly to key without redundant value parameter
         checked = target_col.checkbox(
             skill,
-            value=(skill in st.session_state.technical_skills),
             key=chk_key
         )
         if checked:
@@ -1595,6 +1600,7 @@ def render_technical_interview_page():
     with col_middle:
         if not st.session_state.confirm_end_technical and not st.session_state.confirm_submit_technical:
             if st.button("⏹ End Interview", key="btn_end_tech_q", type="secondary", use_container_width=True):
+                save_current_technical_answer(curr_idx)
                 st.session_state.confirm_end_technical = True
                 st.session_state.confirm_submit_technical = False
                 st.rerun()
@@ -2200,8 +2206,14 @@ def render_interview_page():
             
         if not hardware_ready:
             st.error("❌ Camera/Microphone access denied or hardware not found.\n\nPlease click the site settings icon (🔒) in your browser URL bar to 'Allow' access to Camera and Microphone, or check your OS privacy settings.")
-            if st.button("Retry Access", type="primary"):
-                st.rerun()
+            col_hw1, col_hw2 = st.columns(2)
+            with col_hw1:
+                if st.button("Retry Access", key="btn_retry_hw_acc", type="primary", use_container_width=True):
+                    st.rerun()
+            with col_hw2:
+                if st.button("Continue in Demo / Simulation Mode", key="btn_bypass_hw_acc", type="secondary", use_container_width=True):
+                    st.session_state.hardware_verified = True
+                    st.rerun()
             return # Halt rendering until fixed
             
         st.success("✅ Camera & Microphone Ready!")
