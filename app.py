@@ -11,7 +11,11 @@ from datetime import datetime
 
 # Import internal modules
 from utils import scroll_to_top, apply_css, speak_question
-from video_analysis import aggregate_video_analysis
+from video_analysis import (
+    aggregate_video_analysis,
+    analyze_technical_question_frames,
+    calculate_overall_visual_analysis
+)
 from audio_analysis import analyze_audio_behavior
 from scoring import calculate_scores
 from insights import generate_feedback
@@ -192,6 +196,8 @@ def init_session_state():
         st.session_state.technical_video_results = {}
     if 'technical_audio_results' not in st.session_state:
         st.session_state.technical_audio_results = {}
+    if 'technical_overall_visual_analysis' not in st.session_state:
+        st.session_state.technical_overall_visual_analysis = None
     if 'technical_hardware_verified' not in st.session_state:
         st.session_state.technical_hardware_verified = False
     if 'technical_session_id' not in st.session_state:
@@ -1723,11 +1729,15 @@ def render_technical_interview_page():
                 audio_path=audio_path
             )
 
-        # MediaPipe video analysis on captured frames
+        # MediaPipe visual, head-pose, eye-gaze and posture analysis
         st.session_state.technical_frames[curr_idx] = sampled_frames
-        if sampled_frames:
-            v_res = aggregate_video_analysis(sampled_frames)
-            st.session_state.technical_video_results[curr_idx] = v_res
+        v_res = analyze_technical_question_frames(
+            sampled_frames,
+            question_id=curr_idx + 1,
+            domain=q_domain,
+            skill=q_skill
+        )
+        st.session_state.technical_video_results[curr_idx] = v_res
 
     # =========================================================================
     # STAGE 6: AUTOMATIC NEXT QUESTION TRANSITION
@@ -1822,6 +1832,7 @@ def render_technical_submission_page():
                 <span class="meta-tag meta-tag-skill">{q_data.get('skill', 'General')}</span>
                 <span class="meta-tag meta-tag-diff">{q_data.get('difficulty', st.session_state.technical_difficulty)}</span>
                 <span class="meta-tag meta-tag-type">{q_data.get('question_type', 'Conceptual')}</span>
+                <span class="meta-tag" style="background: rgba(56, 189, 248, 0.12); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.3);">👁️ Visuals: {st.session_state.technical_video_results.get(i, {}).get('face_visibility_pct', 0.0)}% visibility</span>
             </div>
             """, unsafe_allow_html=True)
             
@@ -2015,7 +2026,17 @@ def render_technical_results_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # 3. Performance Visualization: Criteria Breakdown and Skill Performance
+    # Compute overall visual analysis from valid question-level frames
+    overall_vis = calculate_overall_visual_analysis(st.session_state.get("technical_video_results", {}))
+    st.session_state.technical_overall_visual_analysis = overall_vis
+
+    # 3. Categorized Performance Dashboard (A: Technical, B: Speech & Fluency, C: Facial & Posture)
+    tab_tech, tab_audio, tab_vis = st.tabs([
+        "💻 Category A: Technical Evaluation",
+        "🎙️ Category B: Speech & Fluency Delivery",
+        "👁️ Category C: Facial, Eye-Gaze & Posture Analysis"
+    ])
+
     evals = results.get("evaluations", [])
     tot_evals = max(len(evals), 1)
     avg_correctness = round(sum(e.get("criteria_scores", {}).get("technical_correctness", 0) for e in evals) / tot_evals, 1)
@@ -2024,132 +2045,214 @@ def render_technical_results_page():
     avg_completeness = round(sum(e.get("criteria_scores", {}).get("completeness", 0) for e in evals) / tot_evals, 1)
     avg_quality = round(sum(e.get("criteria_scores", {}).get("explanation_quality", 0) for e in evals) / tot_evals, 1)
 
-    col_vis1, col_vis2 = st.columns([1.1, 1])
+    with tab_tech:
+        col_vis1, col_vis2 = st.columns([1.1, 1])
 
-    with col_vis1:
-        st.subheader("📊 Evaluation Criteria")
-        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem;'>Average performance across all 5 evaluation criteria:</p>", unsafe_allow_html=True)
-        
-        criteria_list = [
-            ("Technical Correctness", avg_correctness, 40, "#38bdf8"),
-            ("Conceptual Understanding", avg_concepts, 25, "#c084fc"),
-            ("Relevance", avg_relevance, 15, "#4ade80"),
-            ("Completeness", avg_completeness, 15, "#fb923c"),
-            ("Explanation Quality", avg_quality, 5, "#facc15"),
-        ]
+        with col_vis1:
+            st.subheader("📊 Evaluation Criteria")
+            st.markdown("<p style='color: #94a3b8; font-size: 0.9rem;'>Average performance across all 5 evaluation criteria:</p>", unsafe_allow_html=True)
+            
+            criteria_list = [
+                ("Technical Correctness", avg_correctness, 40, "#38bdf8"),
+                ("Conceptual Understanding", avg_concepts, 25, "#c084fc"),
+                ("Relevance", avg_relevance, 15, "#4ade80"),
+                ("Completeness", avg_completeness, 15, "#fb923c"),
+                ("Explanation Quality", avg_quality, 5, "#facc15"),
+            ]
 
-        for c_label, c_val, c_max, c_color in criteria_list:
-            pct = int((c_val / c_max) * 100)
-            st.markdown(f"""
-            <div style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 14px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">
-                    <span style="color: #ffffff;">{c_label}</span>
-                    <span style="color: {c_color}; font-weight: 700;">{c_val} / {c_max} ({pct}%)</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; overflow: hidden;">
-                    <div style="background: {c_color}; width: {pct}%; height: 100%; border-radius: 4px;"></div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    with col_vis2:
-        st.subheader("🎯 Skill-wise Performance")
-        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem;'>Evaluated mastery by technical sub-skill:</p>", unsafe_allow_html=True)
-        
-        skill_avgs = results.get("skill_averages", {})
-        if skill_avgs:
-            for sk_name, sk_score in skill_avgs.items():
-                sk_lvl = classify_performance(sk_score)
-                sk_col = "#4ade80" if sk_score >= 75 else "#facc15" if sk_score >= 60 else "#fb923c" if sk_score >= 40 else "#f87171"
+            for c_label, c_val, c_max, c_color in criteria_list:
+                pct = int((c_val / c_max) * 100) if c_max > 0 else 0
                 st.markdown(f"""
                 <div style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 14px;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">
-                        <span style="color: #ffffff;">{sk_name}</span>
-                        <span style="color: {sk_col}; font-weight: 700;">{sk_score}/100 • {sk_lvl}</span>
+                        <span style="color: #ffffff;">{c_label}</span>
+                        <span style="color: {c_color}; font-weight: 700;">{c_val} / {c_max} ({pct}%)</span>
                     </div>
                     <div style="background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; overflow: hidden;">
-                        <div style="background: {sk_col}; width: {min(100, int(sk_score))}%; height: 100%; border-radius: 4px;"></div>
+                        <div style="background: {c_color}; width: {pct}%; height: 100%; border-radius: 4px;"></div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-        else:
-            st.info("No skill data available.")
 
-    st.write("---")
-
-    # 4. Strengths and Weaknesses
-    col_str, col_imp = st.columns(2)
-    
-    with col_str:
-        st.markdown("""
-        <div style="background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 14px; padding: 22px 20px; height: 100%;">
-            <h4 style="color: #4ade80; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                💪 Your Strengths
-            </h4>
-        """, unsafe_allow_html=True)
-        
-        strengths = []
-        for e in evals:
-            if e.get("score", 0) >= 60:
-                for w in e.get("what_you_did_well", []):
-                    if w not in strengths:
-                        strengths.append(w)
-        if not strengths:
-            strengths = ["Engaged actively with technical interview questions across the domain."]
+        with col_vis2:
+            st.subheader("🎯 Skill-wise Performance")
+            st.markdown("<p style='color: #94a3b8; font-size: 0.9rem;'>Evaluated mastery by technical sub-skill:</p>", unsafe_allow_html=True)
             
-        for s in strengths[:4]:
-            st.markdown(f"<div style='color: #e2e8f0; font-size: 0.9rem; margin-bottom: 8px;'>✅ {s}</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+            skill_avgs = results.get("skill_averages", {})
+            if skill_avgs:
+                for sk_name, sk_score in skill_avgs.items():
+                    sk_lvl = classify_performance(sk_score)
+                    sk_col = "#4ade80" if sk_score >= 75 else "#facc15" if sk_score >= 60 else "#fb923c" if sk_score >= 40 else "#f87171"
+                    st.markdown(f"""
+                    <div style="margin-bottom: 12px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 14px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">
+                            <span style="color: #ffffff;">{sk_name}</span>
+                            <span style="color: {sk_col}; font-weight: 700;">{sk_score}/100 • {sk_lvl}</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; overflow: hidden;">
+                            <div style="background: {sk_col}; width: {min(100, int(sk_score))}%; height: 100%; border-radius: 4px;"></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("No skill data available.")
 
-    with col_imp:
-        st.markdown("""
-        <div style="background: rgba(251, 146, 60, 0.06); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 14px; padding: 22px 20px; height: 100%;">
-            <h4 style="color: #fb923c; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                ⚠️ Areas That Need Improvement
-            </h4>
-        """, unsafe_allow_html=True)
-        
-        improvements = []
-        for e in evals:
-            for imp in e.get("areas_to_improve", []):
-                if imp not in improvements:
-                    improvements.append(imp)
-        if not improvements:
-            improvements = ["Practice writing full syntactical definitions and explaining runtime trade-offs."]
+        st.write("---")
 
-        for imp in improvements[:4]:
-            st.markdown(f"<div style='color: #e2e8f0; font-size: 0.9rem; margin-bottom: 8px;'>🎯 {imp}</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.write("---")
-
-    # 5. Personalized Recommendations (Recommended Next Steps)
-    st.subheader("💡 Recommended Next Steps")
-    weakest_skill_str = results.get("weakest_skill", "Core Technical Topics")
-    
-    rec_cards = [
-        ("Targeted Revision", f"Conduct focused study sessions on {weakest_skill_str} to master foundational definitions and underlying mechanics.", "📘"),
-        ("Scenario-Based Application", "Practice explaining real-world architecture scenarios, algorithmic complexity (Big-O), and memory overhead.", "⚙️"),
-        ("Concrete Code Snippets", "Incorporate syntactical markers, error handling, and language idiomatic constructs in technical explanations.", "💻"),
-        ("Progressive Difficulty", "Transition from Beginner fundamentals to Intermediate/Advanced questions once concept coverage stabilizes above 75%.", "📈")
-    ]
-
-    col_r1, col_r2 = st.columns(2)
-    for idx, (r_title, r_desc, r_ico) in enumerate(rec_cards):
-        target_col = col_r1 if idx % 2 == 0 else col_r2
-        with target_col:
-            st.markdown(f"""
-            <div style="background: rgba(15, 23, 42, 0.7); border-left: 4px solid #38bdf8; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px;">
-                <div style="color: #38bdf8; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px;">{r_ico} {r_title}</div>
-                <div style="color: #94a3b8; font-size: 0.88rem; line-height: 1.5;">{r_desc}</div>
-            </div>
+        # Strengths and Weaknesses
+        col_str, col_imp = st.columns(2)
+        with col_str:
+            st.markdown("""
+            <div style="background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 14px; padding: 22px 20px; height: 100%;">
+                <h4 style="color: #4ade80; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    💪 Your Technical Strengths
+                </h4>
             """, unsafe_allow_html=True)
+            strengths = []
+            for e in evals:
+                if e.get("score", 0) >= 60:
+                    for w in e.get("what_you_did_well", []):
+                        if w not in strengths:
+                            strengths.append(w)
+            if not strengths:
+                strengths = ["Engaged actively with technical interview questions across the domain."]
+            for s in strengths[:4]:
+                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.9rem; margin-bottom: 8px;'>✅ {s}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_imp:
+            st.markdown("""
+            <div style="background: rgba(251, 146, 60, 0.06); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 14px; padding: 22px 20px; height: 100%;">
+                <h4 style="color: #fb923c; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    ⚠️ Areas That Need Improvement
+                </h4>
+            """, unsafe_allow_html=True)
+            improvements = []
+            for e in evals:
+                for imp in e.get("areas_to_improve", []):
+                    if imp not in improvements:
+                        improvements.append(imp)
+            if not improvements:
+                improvements = ["Practice writing full syntactical definitions and exploring architectural edge cases."]
+            for imp in improvements[:4]:
+                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.9rem; margin-bottom: 8px;'>🎯 {imp}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.write("---")
+        # Recommended Next Steps
+        st.subheader("💡 Recommended Next Steps")
+        weakest_skill_str = results.get("weakest_skill", "Core Technical Topics")
+        rec_cards = [
+            ("Targeted Revision", f"Conduct focused study sessions on {weakest_skill_str} to master foundational definitions and underlying mechanics.", "📘"),
+            ("Scenario-Based Application", "Practice explaining real-world architecture scenarios, algorithmic complexity (Big-O), and memory overhead.", "⚙️"),
+            ("Concrete Code Snippets", "Incorporate syntactical markers, error handling, and language idiomatic constructs in technical explanations.", "💻"),
+            ("Progressive Difficulty", "Transition from Beginner fundamentals to Intermediate/Advanced questions once concept coverage stabilizes above 75%.", "📈")
+        ]
+        col_r1, col_r2 = st.columns(2)
+        for idx, (r_title, r_desc, r_ico) in enumerate(rec_cards):
+            target_col = col_r1 if idx % 2 == 0 else col_r2
+            with target_col:
+                st.markdown(f"""
+                <div style="background: rgba(15, 23, 42, 0.7); border-left: 4px solid #38bdf8; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px;">
+                    <div style="color: #38bdf8; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px;">{r_ico} {r_title}</div>
+                    <div style="color: #94a3b8; font-size: 0.88rem; line-height: 1.5;">{r_desc}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    with tab_audio:
+        st.subheader("🎙️ Spoken Speech Delivery & Articulation")
+        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem;'>Pacing, filler words, and fluency metrics from your spoken answers (Kept separate from technical correctness):</p>", unsafe_allow_html=True)
+        
+        audio_dict = st.session_state.get("technical_audio_results", {})
+        tot_words = sum(a.get("word_count", 0) for a in audio_dict.values())
+        tot_fillers = sum(a.get("filler_words", 0) for a in audio_dict.values())
+        avg_fluency = round(sum(a.get("fluency_score", 0) for a in audio_dict.values()) / max(1, len(audio_dict)), 1) if audio_dict else 0.0
+
+        col_au1, col_au2, col_au3 = st.columns(3)
+        with col_au1:
+            st.metric("Total Spoken Words", tot_words)
+        with col_au2:
+            st.metric("Detected Filler Words", tot_fillers)
+        with col_au3:
+            st.metric("Average Articulation Score", f"{avg_fluency} / 100")
+
+        st.markdown("""
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 14px 18px; margin-top: 14px;">
+            <div style="color: #38bdf8; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px;">💡 Speech Quality Insights:</div>
+            <div style="color: #cbd5e1; font-size: 0.88rem; line-height: 1.5;">
+                • Candidate answers averaged <strong>{round(tot_words / max(1, len(audio_dict)), 1)}</strong> words per question within the 15-second window.<br>
+                • Filler word frequency remained within manageable boundaries ({tot_fillers} total instances detected across {len(audio_dict)} questions).
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with tab_vis:
+        st.subheader("👁️ Facial, Eye-Gaze & Posture Analysis")
+        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem;'>Landmark-based geometric estimations of camera presence, head pose, approximate gaze direction, and upper-body posture:</p>", unsafe_allow_html=True)
+
+        col_v1, col_v2, col_v3, col_v4, col_v5 = st.columns(5)
+        with col_v1:
+            st.metric("Face Visibility", f"{overall_vis.get('overall_face_visibility_pct', 0.0)}%")
+        with col_v2:
+            st.metric("Camera-Facing", f"{overall_vis.get('overall_camera_facing_pct', 0.0)}%")
+        with col_v3:
+            st.metric("Face Centering", f"{overall_vis.get('overall_face_centering_pct', 0.0)}%")
+        with col_v4:
+            st.metric("Head Movement", str(overall_vis.get('overall_head_movement', 'Natural'))[:12])
+        with col_v5:
+            st.metric("Posture Status", str(overall_vis.get('dominant_posture', 'Upright'))[:12])
+
+        col_v_obs, col_v_sugg = st.columns(2)
+        with col_v_obs:
+            st.markdown("""
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 16px; height: 100%;">
+                <div style="color: #38bdf8; font-weight: 700; margin-bottom: 10px; font-size: 0.95rem;">👁️ Visual Engagement Observations</div>
+            """, unsafe_allow_html=True)
+            for obs in overall_vis.get("key_observations", []):
+                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>• {obs}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_v_sugg:
+            st.markdown("""
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 12px; padding: 16px; height: 100%;">
+                <div style="color: #c084fc; font-weight: 700; margin-bottom: 10px; font-size: 0.95rem;">📐 Framing & Pacing Suggestions</div>
+            """, unsafe_allow_html=True)
+            for sg in overall_vis.get("improvement_suggestions", []):
+                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>• {sg}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # Question-wise visual table
+        st.markdown("<div style='margin-top: 18px; font-weight: 700; color: #ffffff;'>📋 Question-Wise Visual Breakdown:</div>", unsafe_allow_html=True)
+        q_vis_dict = st.session_state.get("technical_video_results", {})
+        if q_vis_dict:
+            vis_table_rows = []
+            for q_idx in range(len(st.session_state.technical_questions)):
+                qv = q_vis_dict.get(q_idx, {})
+                q_num = q_idx + 1
+                vis_table_rows.append({
+                    "Question": f"Q{q_num}",
+                    "Topic": qv.get("skill", "General"),
+                    "Face Visibility": f"{qv.get('face_visibility_pct', 0.0)}%",
+                    "Camera-Facing": f"{qv.get('gaze_summary', {}).get('approx_camera_facing_pct', 0.0)}%",
+                    "Head Movement": qv.get("head_pose_summary", {}).get("movement_level", "Natural"),
+                    "Posture": qv.get("posture_summary", {}).get("dominant_posture", "Upright")
+                })
+            st.table(vis_table_rows)
+
+        # Transparency disclaimer box
+        st.markdown(f"""
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 12px 16px; margin-top: 14px;">
+            <div style="color: #94a3b8; font-size: 0.82rem; line-height: 1.5;">
+                ℹ️ <strong>Transparency Note:</strong> {overall_vis.get('disclaimer', '')}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.write("---")
 
     # 6. Detailed Question-by-Question Analysis
     st.subheader("🔍 Question-by-Question Analysis")
-    st.markdown("<p style='color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.2rem;'>Review each technical question, your submitted answer, scoring criteria, and model answer.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.2rem;'>Review each technical question, your submitted answer, multi-modal delivery indicators, scoring criteria, and model answer.</p>", unsafe_allow_html=True)
 
     for i, ev in enumerate(evals):
         q_sc = ev.get("score", 0)
@@ -2169,6 +2272,21 @@ def render_technical_results_page():
                 <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: {q_badge_color}; background: rgba(15, 23, 42, 0.8); border: 1px solid {q_badge_color};">
                     Score: {q_sc}/100
                 </span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Multi-Modal Delivery Summary (Visual + Audio)
+            q_v_info = st.session_state.get("technical_video_results", {}).get(i, {})
+            q_a_info = st.session_state.get("technical_audio_results", {}).get(i, {})
+            v_vis_disp = f"{q_v_info.get('face_visibility_pct', 0.0)}%"
+            v_cam_disp = f"{q_v_info.get('gaze_summary', {}).get('approx_camera_facing_pct', 0.0)}%"
+            a_wpm_disp = f"{q_a_info.get('words_per_minute', 0.0)} WPM"
+            a_fil_disp = f"{q_a_info.get('filler_words', 0)} fillers"
+
+            st.markdown(f"""
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; font-size: 0.83rem; display: flex; flex-wrap: wrap; justify-content: space-between;">
+                <span style="color: #7dd3fc;">👁️ <strong>Visual:</strong> {v_vis_disp} visibility • {v_cam_disp} camera-facing</span>
+                <span style="color: #c084fc;">🎙️ <strong>Audio:</strong> {a_wpm_disp} • {a_fil_disp}</span>
             </div>
             """, unsafe_allow_html=True)
 
