@@ -7,3 +7,4 @@ temp_*.wav
 .env
 .venv/
 env/
+
