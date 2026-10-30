@@ -446,29 +446,42 @@ def apply_css():
             content: '';
             position: absolute;
             width: 0;
-            height: 2px;
+            height: 3px;
             display: block;
             margin-top: 5px;
-            right: 0;
+            left: 50%;
             bottom: 0;
+            transform: translateX(-50%);
             background: #38bdf8;
-            transition: width 0.3s ease;
+            border-radius: 2px;
+            transition: width 0.25s ease;
         }
 
-        div[data-testid="stRadio"] label:hover::after,
+        div[data-testid="stRadio"] label:hover::after {
+            width: 80%;
+        }
+
         div[data-testid="stRadio"] label:has(input:checked)::after,
         div[data-testid="stRadio"] label[aria-checked="true"]::after,
-        div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] label::after {
-            width: 100%;
-            left: 0;
-            background: #38bdf8;
+        div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] label::after,
+        div[data-testid="stRadio"] div[role="radio"][aria-checked="true"]::after {
+            width: 100% !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            background: #38bdf8 !important;
+            box-shadow: 0 0 10px #38bdf8, 0 0 18px rgba(56, 189, 248, 0.5) !important;
         }
         
         /* Active state text color */
         div[data-testid="stRadio"] label:has(input:checked) p,
         div[data-testid="stRadio"] label[aria-checked="true"] p,
-        div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] label p {
+        div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] label p,
+        div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] p,
+        div[data-testid="stRadio"] label:has(input:checked),
+        div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] label {
             color: #38bdf8 !important;
+            font-weight: 700 !important;
+            text-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
         }
 
         /* SECTION STYLING */
@@ -595,6 +608,93 @@ def apply_css():
             left: 0;
             top: -5px;
         }
+
+        .guidelines-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            margin-top: 1.5rem;
+        }
+
+        .guideline-card {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(56, 189, 248, 0.16);
+            border-radius: 16px;
+            padding: 1.75rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(12px);
+        }
+
+        .guideline-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(56, 189, 248, 0.45);
+            box-shadow: 0 12px 30px rgba(56, 189, 248, 0.12);
+            background: rgba(15, 23, 42, 0.82);
+        }
+
+        .guideline-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            opacity: 0.7;
+        }
+
+        .guideline-badge {
+            display: inline-block;
+            align-self: flex-start;
+            background: rgba(56, 189, 248, 0.12);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 0.85rem;
+        }
+
+        .guideline-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .guideline-points {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .guideline-points li {
+            margin-bottom: 0.6rem;
+            padding-left: 1.2rem;
+            position: relative;
+        }
+
+        .guideline-points li::before {
+            content: '▹';
+            color: #38bdf8;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
         
         /* Interview Mode Badge */
         .mode-badge {
@@ -672,24 +772,31 @@ def speak_question(text):
 def scroll_to_top():
     """
     Forces the browser window and Streamlit scroll containers to scroll to the top immediately.
-    Also injects a persistent capture-phase click listener so clicking any button automatically
-    resets scroll position to top for the upcoming view.
+    Targets [data-testid="stAppViewContainer"], [data-testid="stMain"], .main, section.main,
+    documentElement, body, window, and #top-anchor.
+    Also ensures persistent click listener and MutationObserver so ANY button or tab clicked
+    ensures the upcoming page opens directly from the top.
     """
     try:
         import streamlit.components.v1 as components
-        js_code = """
+        import uuid
+        call_id = uuid.uuid4().hex
+        js_code = "<!-- scroll_reset_" + call_id + " -->\n" + """
         <script>
         (function() {
-            function doScrollTop() {
+            function scrollAllToTop() {
                 try {
-                    const parentDoc = window.parent.document;
+                    const pDoc = (window.parent && window.parent.document) ? window.parent.document : document;
+                    if (!pDoc) return;
                     const targets = [
-                        parentDoc.querySelector('[data-testid="stAppViewContainer"]'),
-                        parentDoc.querySelector('.main'),
-                        parentDoc.querySelector('section.main'),
-                        parentDoc.documentElement,
-                        parentDoc.body,
-                        window.parent
+                        pDoc.querySelector('[data-testid="stAppViewContainer"]'),
+                        pDoc.querySelector('[data-testid="stMain"]'),
+                        pDoc.querySelector('.main'),
+                        pDoc.querySelector('section.main'),
+                        pDoc.querySelector('.main .block-container'),
+                        pDoc.querySelector('[data-testid="stApp"]'),
+                        pDoc.documentElement,
+                        pDoc.body
                     ];
                     targets.forEach(function(el) {
                         if (el) {
@@ -697,35 +804,76 @@ def scroll_to_top():
                             try { if (el.scrollTo) el.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch(e) {}
                         }
                     });
+                    const anchor = pDoc.getElementById('top-anchor');
+                    if (anchor && anchor.scrollIntoView) {
+                        try { anchor.scrollIntoView({ behavior: 'instant', block: 'start' }); } catch(e) {}
+                    }
+                    try { if (window.parent) window.parent.scrollTo(0, 0); } catch(e) {}
+                    try { window.scrollTo(0, 0); } catch(e) {}
                 } catch(e) {}
             }
 
-            // Reset scroll immediately and on key animation frames
-            doScrollTop();
+            // Execute scroll immediately and across mounting ticks
+            scrollAllToTop();
             if (typeof requestAnimationFrame === 'function') {
-                requestAnimationFrame(doScrollTop);
+                requestAnimationFrame(scrollAllToTop);
             }
-            setTimeout(doScrollTop, 25);
-            setTimeout(doScrollTop, 100);
-            setTimeout(doScrollTop, 250);
+            [25, 75, 150, 300, 500, 800].forEach(function(t) {
+                setTimeout(scrollAllToTop, t);
+            });
 
-            // Attach persistent click listener to parent document
+            // Ensure parent document has the global navigation observer attached
             try {
-                const pDoc = window.parent.document;
-                if (!pDoc._stScrollHookAttached) {
-                    pDoc._stScrollHookAttached = true;
+                const pDoc = (window.parent && window.parent.document) ? window.parent.document : document;
+                if (pDoc && !pDoc._stGlobalScrollObserverAttached) {
+                    pDoc._stGlobalScrollObserverAttached = true;
+
+                    // 1. Capture click on ANY button or tab
                     pDoc.addEventListener('click', function(e) {
-                        const btn = e.target.closest('button') || e.target.closest('[role="button"]');
+                        const btn = e.target.closest('button') ||
+                                    e.target.closest('[role="button"]') ||
+                                    e.target.closest('input[type="submit"]') ||
+                                    e.target.closest('div[data-testid="stRadio"] div[role="radio"]') ||
+                                    e.target.closest('div[data-testid="stRadio"] label');
                         if (btn) {
-                            setTimeout(doScrollTop, 30);
-                            setTimeout(doScrollTop, 150);
+                            window._stNeedsScrollTop = true;
+                            window._stScrollDeadline = Date.now() + 2500;
+                            scrollAllToTop();
+                            [40, 100, 200, 350, 500, 750, 1000, 1400, 1900].forEach(function(delay) {
+                                setTimeout(function() {
+                                    if (window._stNeedsScrollTop && Date.now() < window._stScrollDeadline) {
+                                        scrollAllToTop();
+                                    }
+                                }, delay);
+                            });
                         }
                     }, true);
+
+                    // 2. MutationObserver detects when Streamlit renders the next page
+                    const container = pDoc.querySelector('[data-testid="stAppViewContainer"]') || pDoc.body;
+                    if (container && window.MutationObserver) {
+                        const observer = new MutationObserver(function() {
+                            if (window._stNeedsScrollTop && Date.now() < window._stScrollDeadline) {
+                                scrollAllToTop();
+                                if (typeof requestAnimationFrame === 'function') {
+                                    requestAnimationFrame(scrollAllToTop);
+                                }
+                            }
+                        });
+                        observer.observe(container, { childList: true, subtree: true });
+                    }
+
+                    // 3. User manual scroll disarms the auto-scroll
+                    ['wheel', 'touchmove'].forEach(function(evt) {
+                        pDoc.addEventListener(evt, function() {
+                            window._stNeedsScrollTop = false;
+                        }, { passive: true });
+                    });
                 }
             } catch(e) {}
         })();
         </script>
         """
-        components.html(js_code, height=0, width=0)
+        components.html(js_code, height=0, width=0, key=f"st_scroll_{call_id}")
     except Exception:
         pass

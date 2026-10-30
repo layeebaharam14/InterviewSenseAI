@@ -230,6 +230,7 @@ def init_session_state():
         st.session_state.technical_evaluation_completed = False
 
 def render_landing_page():
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     # Inject Top Navigation Bar using Streamlit Radio
     st.radio(
         "Navigation",
@@ -601,294 +602,116 @@ def render_landing_page():
         """, unsafe_allow_html=True)
 
     elif st.session_state.current_tab == "Guidelines":
-        # GUIDELINES SECTION
-        components.html("""
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<style>
-  html, body { margin: 0; padding: 0; background: transparent; }
-  body { display: flex; justify-content: center; }
-              .guidelines-section {
-                width: min(1400px, 100%);
-                margin: 0 auto;
-                padding-left: 0.5rem;
-                padding-right: 0.5rem;
-                padding-top: 2.8rem;
-                padding-bottom: 3rem;
-              }
-
-              .guidelines-header {
-                text-align: center;
-                margin-top: -0.25rem;
-                margin-bottom: 2.6rem;
-              }
-
-              .guidelines-title {
-                font-size: 3.1rem;
-                font-weight: 800;
-                letter-spacing: 0.5px;
-                color: #ffffff;
-                text-shadow: 0 0 18px rgba(56, 189, 248, 0.18);
-                line-height: 1.15;
-                margin-bottom: 0.85rem;
-              }
-
-              .guidelines-subtitle {
-                max-width: 820px;
-                margin: 0 auto;
-                color: rgba(248, 250, 252, 0.72);
-                font-size: 1.08rem;
-                line-height: 1.7;
-                text-shadow: none;
-              }
-
-              .guidelines-grid {
-                width: 100%;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                column-gap: 0;
-                row-gap: 0;
-                margin-top: 0.75rem;
-              }
-
-              .guideline-block {
-                display: flex;
-                gap: 1.25rem;
-                padding: 1.55rem 1.7rem;
-                align-items: flex-start;
-                transition: transform 0.25s ease, filter 0.25s ease;
-              }
-
-              /* Subtle quadrant separators like the reference (not cards) */
-              .g-border-right { border-right: 1px solid rgba(148, 163, 184, 0.18); }
-              .g-border-bottom { border-bottom: 1px solid rgba(148, 163, 184, 0.18); }
-
-              .guideline-block:hover {
-                transform: translateX(4px);
-              }
-
-              .g-icon-wrap {
-                width: 70px;
-                height: 70px;
-                border-radius: 999px;
-                border: 1px solid rgba(56, 189, 248, 0.50);
-                background: rgba(2, 6, 23, 0.25);
-                box-shadow:
-                  0 0 26px rgba(56, 189, 248, 0.24),
-                  inset 0 0 16px rgba(56, 189, 248, 0.11);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex: 0 0 70px;
-                transition: box-shadow 0.25s ease, border-color 0.25s ease, filter 0.25s ease;
-              }
-
-              .guideline-block:hover .g-icon-wrap {
-                border-color: rgba(56, 189, 248, 0.75);
-                box-shadow:
-                  0 0 30px rgba(56, 189, 248, 0.32),
-                  inset 0 0 18px rgba(56, 189, 248, 0.14);
-              }
-
-              .g-icon {
-                width: 32px;
-                height: 32px;
-              }
-
-              .g-icon path, .g-icon circle, .g-icon line, .g-icon polyline, .g-icon rect {
-                stroke: #38bdf8;
-                stroke-width: 2;
-                fill: none;
-                stroke-linecap: round;
-                stroke-linejoin: round;
-              }
-
-              .g-content { flex: 1; }
-
-              .g-head {
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                margin-top: 0.1rem;
-                margin-bottom: 0.6rem;
-              }
-
-              .g-title {
-                font-size: 1.12rem;
-                font-weight: 700;
-                color: rgba(56, 189, 248, 0.95);
-                margin: 0;
-              }
-
-              .g-points {
-                margin: 0;
-                padding-left: 1.1rem;
-              }
-
-              .g-points li {
-                margin: 0.4rem 0;
-                color: rgba(248, 250, 252, 0.84);
-                font-size: 0.98rem;
-                line-height: 1.55;
-                white-space: normal;
-              }
-
-              .g-points li::marker {
-                color: rgba(56, 189, 248, 0.95);
-              }
-
-              /* Keep 2-column layout for typical Streamlit widths (~850px) */
-              @media (max-width: 700px) {
-                .guidelines-title { font-size: 2.4rem; }
-                .guidelines-grid { grid-template-columns: 1fr; }
-                .g-border-right { border-right: none; }
-                .guideline-block { border-bottom: 1px solid rgba(148, 163, 184, 0.18); }
-                .g-points li { white-space: normal; }
-              }
-</style>
-</head>
-<body>
-
-<div class="page-section guidelines-section">
-  <div class="guidelines-header">
-    <div class="guidelines-title">Interview Guidelines</div>
-    <div class="guidelines-subtitle">
-      Follow these best practices to perform your best and make a great impression in your interview.
-    </div>
-  </div>
-
-  <div class="guidelines-grid">
-                <!-- Row 1 -->
-                <div class="guideline-block g-border-right g-border-bottom">
-                  <div class="g-icon-wrap">
-                    <!-- chat bubble -->
-                    <svg class="g-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M20 13a6 6 0 0 1-6 6H8l-4 3V7a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6z"></path>
-                      <line x1="8" y1="8" x2="16" y2="8"></line>
-                      <line x1="8" y1="12" x2="14" y2="12"></line>
-                    </svg>
-                  </div>
-                  <div class="g-content">
-                    <div class="g-head"><div class="g-title">1. Communication</div></div>
-                    <ul class="g-points">
-                      <li>Speak clearly and confidently</li>
-                      <li>Avoid filler words like "um", "uh", "like"</li>
-                      <li>Speak naturally and at a moderate pace</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="guideline-block g-border-bottom">
-                  <div class="g-icon-wrap">
-                    <!-- eye -->
-                    <svg class="g-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path>
-                      <circle cx="12" cy="12" r="3.2"></circle>
-                    </svg>
-                  </div>
-                  <div class="g-content">
-                    <div class="g-head"><div class="g-title">2. Eye Contact &amp; Focus</div></div>
-                    <ul class="g-points">
-                      <li>Maintain eye contact with the camera</li>
-                      <li>Stay focused and avoid looking away frequently</li>
-                      <li>Show attentiveness throughout</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- Row 2 -->
-                <div class="guideline-block g-border-right g-border-bottom">
-                  <div class="g-icon-wrap">
-                    <!-- posture (seated person) -->
-                    <svg class="g-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <circle cx="9" cy="6.3" r="2.1"></circle>
-                      <path d="M8.2 8.8l3.3 2.4h3.6"></path>
-                      <path d="M10.1 11.1l-1.1 3.7"></path>
-                      <path d="M12.2 11.6l1.2 3.8"></path>
-                      <!-- chair -->
-                      <path d="M15.8 10.3v5.2"></path>
-                      <path d="M15.8 15.5h3.4"></path>
-                      <path d="M6.0 20h13.0"></path>
-                    </svg>
-                  </div>
-                  <div class="g-content">
-                    <div class="g-head"><div class="g-title">3. Posture &amp; Body Language</div></div>
-                    <ul class="g-points">
-                      <li>Sit upright with a professional posture</li>
-                      <li>Avoid unnecessary movements or fidgeting</li>
-                      <li>Keep gestures natural and controlled</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="guideline-block g-border-bottom">
-                  <div class="g-icon-wrap">
-                    <!-- light bulb -->
-                    <svg class="g-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M9 18h6"></path>
-                      <path d="M10 22h4"></path>
-                      <path d="M8 10a4 4 0 1 1 8 0c0 2-1.2 3-2.2 4.2-.4.5-.8 1.1-.8 1.8H11c0-.7-.4-1.3-.8-1.8C9.2 13 8 12 8 10z"></path>
-                    </svg>
-                  </div>
-                  <div class="g-content">
-                    <div class="g-head"><div class="g-title">4. Environment</div></div>
-                    <ul class="g-points">
-                      <li>Ensure proper lighting on your face</li>
-                      <li>Avoid background noise and distractions</li>
-                      <li>Keep your setup clean and professional</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- Row 3 -->
-                <div class="guideline-block g-border-right">
-                  <div class="g-icon-wrap">
-                    <!-- document/pencil -->
-                    <svg class="g-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M7 3h7l3 3v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
-                      <path d="M14 3v4h4"></path>
-                      <path d="M9 14l7-7 2 2-7 7H9z"></path>
-                      <path d="M9 14v3h3"></path>
-                    </svg>
-                  </div>
-                  <div class="g-content">
-                    <div class="g-head"><div class="g-title">5. Answering Approach</div></div>
-                    <ul class="g-points">
-                      <li>Understand the question before answering</li>
-                      <li>Structure answers clearly and logically</li>
-                      <li>Keep responses relevant and concise</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="guideline-block">
-                  <div class="g-icon-wrap">
-                    <!-- target -->
-                    <svg class="g-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <circle cx="12" cy="12" r="8"></circle>
-                      <circle cx="12" cy="12" r="4"></circle>
-                      <path d="M12 2v3"></path>
-                      <path d="M22 12h-3"></path>
-                      <path d="M12 22v-3"></path>
-                      <path d="M2 12h3"></path>
-                    </svg>
-                  </div>
-                  <div class="g-content">
-                    <div class="g-head"><div class="g-title">6. Preparation &amp; Professionalism</div></div>
-                    <ul class="g-points">
-                      <li>Be ready before the interview starts</li>
-                      <li>Maintain calm and confidence</li>
-                      <li>Treat it like a real interview situation</li>
-                    </ul>
-                  </div>
-                </div>
-  </div>
+        # GUIDELINES SECTION - CLEAN RAW HTML (NO CODE BLOCK INTERPRETATION)
+        st.markdown('''<div class="page-section" style="max-width: 1200px; margin: 0 auto;">
+<div style="text-align: center; margin-bottom: 2.5rem;">
+<h2 class="section-title" style="margin-bottom: 0.5rem;">Interview Guidelines &amp; Best Practices</h2>
+<p style="color: #94a3b8; font-size: 1.1rem; max-width: 800px; margin: 0 auto; line-height: 1.6;">Master your technical and behavioral interviews with InterviewSense AI. Follow these structured guidelines, operational workflows, and proven frameworks to maximize your score and interview readiness.</p>
 </div>
-</body>
-</html>
-        """, height=1220, scrolling=False)
+<div class="guidelines-grid">
+<div class="guideline-card">
+<span class="guideline-badge">Modes &amp; Selection</span>
+<div class="guideline-title">🎯 1. Interview Modes</div>
+<ul class="guideline-points">
+<li><strong>Mock HR Interview:</strong> Behavioral simulation evaluating soft skills, communication clarity, situational answers (STAR method), and interpersonal presence.</li>
+<li><strong>Technical Interview:</strong> Real-time technical assessment measuring conceptual depth, system architecture, problem-solving, and domain terminology.</li>
+<li><strong>Targeted Preparation:</strong> Select the mode matching your upcoming interview requirements or alternate between both for complete readiness.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Configuration</span>
+<div class="guideline-title">⚙️ 2. Domain &amp; Skill Setup</div>
+<ul class="guideline-points">
+<li><strong>Engineering Domains:</strong> Choose from 10+ core domains including Frontend, Backend, AI/ML, DevOps, Cloud Architecture, and Data Engineering.</li>
+<li><strong>Skill Targeting:</strong> Toggle key skills (Python, Docker, React, PyTorch, Kubernetes) to customize the question pool to your expertise.</li>
+<li><strong>Difficulty &amp; Length:</strong> Set your target seniority level (Beginner, Intermediate, Advanced) and select 3 to 10 questions for tailored interview duration.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Pre-Interview</span>
+<div class="guideline-title">🎙️ 3. Hardware &amp; Environment</div>
+<ul class="guideline-points">
+<li><strong>Camera Positioning:</strong> Center your webcam at eye level with balanced front lighting. Avoid strong backlights or dark shadows across your face.</li>
+<li><strong>Microphone Setup:</strong> Use a stable USB or headset microphone in a quiet room free of echo, background music, or keyboard clicks.</li>
+<li><strong>Permission Check:</strong> Grant browser camera and mic access when prompted. The setup screen provides instant hardware verification before starting.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Execution</span>
+<div class="guideline-title">⏱️ 4. Technical Flow &amp; Timers</div>
+<ul class="guideline-points">
+<li><strong>Question Playback:</strong> The AI speaks each question aloud using text-to-speech. Listen carefully without speaking during playback.</li>
+<li><strong>3-Second Countdown:</strong> A visible 3-second preparation countdown (3... 2... 1...) appears immediately after question audio finishes.</li>
+<li><strong>Automatic Camera &amp; Mic:</strong> Hardware activates automatically at countdown zero — no manual click required.</li>
+<li><strong>Fixed 15-Second Recording:</strong> Deliver a concise, focused answer within the fixed 15-second response window. Recording stops automatically.</li>
+<li><strong>Seamless Progression:</strong> Your audio and visual frames are preserved, and the system automatically advances to the subsequent question.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Framework</span>
+<div class="guideline-title">💡 5. Answering Framework (DMET)</div>
+<ul class="guideline-points">
+<li><strong>Definition (D):</strong> Begin with a crisp, 1-sentence formal definition of the concept or pattern.</li>
+<li><strong>Mechanics (M):</strong> Explain how it works internally — data structures, control flow, memory layout, or architectural components.</li>
+<li><strong>Example (E):</strong> Reference a concrete production use case, code pattern, or real-world system scenario.</li>
+<li><strong>Trade-offs (T):</strong> Highlight computational complexity, edge cases, scalability bottlenecks, or alternative design approaches.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Review &amp; Polish</span>
+<div class="guideline-title">📝 6. Speech Capture &amp; Review</div>
+<ul class="guideline-points">
+<li><strong>Technical STT Engine:</strong> Speech recognition incorporates engineering domain dictionaries to reliably capture specialized terminology.</li>
+<li><strong>Submission Review Screen:</strong> After completing all questions, you are directed to a dedicated review page displaying your transcribed responses.</li>
+<li><strong>Transcript Editing:</strong> Review and refine any speech-to-text transcript before final AI submission to ensure your answers accurately reflect your intent.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Evaluation</span>
+<div class="guideline-title">📊 7. 100-Point Scoring Rubric</div>
+<ul class="guideline-points">
+<li><strong>Technical Accuracy &amp; Depth (30 pts):</strong> Factual correctness, precision of concepts, and domain mastery.</li>
+<li><strong>Completeness &amp; Trade-offs (25 pts):</strong> Coverage of edge cases, architectural trade-offs, and system constraints.</li>
+<li><strong>Communication &amp; Terminology (20 pts):</strong> Articulation, concise phrasing, and appropriate use of technical vocabulary.</li>
+<li><strong>Problem-Solving Structure (15 pts):</strong> Methodical breakdown, structured reasoning, and logical progression.</li>
+<li><strong>Visual Presence (10 pts):</strong> Camera engagement, consistent posture, and professional composure.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Ethics &amp; Privacy</span>
+<div class="guideline-title">👁️ 8. Visual Telemetry &amp; Privacy</div>
+<ul class="guideline-points">
+<li><strong>Engagement Tracking:</strong> OpenCV and MediaPipe estimate face presence and camera-facing gaze to provide constructive engagement metrics.</li>
+<li><strong>Posture Estimation:</strong> Head pose orientation and upper-body posture are measured to encourage confident, upright presence.</li>
+<li><strong>100% In-Memory Processing:</strong> Camera frames and audio streams are processed in temporary session memory and are never uploaded, sold, or stored permanently.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Reporting</span>
+<div class="guideline-title">📑 9. Analytics &amp; PDF Export</div>
+<ul class="guideline-points">
+<li><strong>Multi-Dimensional Dashboards:</strong> View overall score gauges, performance tiers, category radars, and per-question rubrics.</li>
+<li><strong>Detailed Question Feedback:</strong> Inspect model answers, key strengths, and specific areas for technical growth for every answered question.</li>
+<li><strong>One-Click PDF Report:</strong> Generate and download a formatted interview evaluation report for offline progress tracking and interview logs.</li>
+</ul>
+</div>
+<div class="guideline-card">
+<span class="guideline-badge">Troubleshooting</span>
+<div class="guideline-title">🛠️ 10. Troubleshooting &amp; Support</div>
+<ul class="guideline-points">
+<li><strong>Camera Access Denied:</strong> Ensure no other application (Zoom, Teams) is using the webcam, and confirm browser permissions are allowed.</li>
+<li><strong>Microphone Recognition:</strong> Speak at an even pace and conversational volume; avoid long silence at the beginning of the 15-second window.</li>
+<li><strong>Navigation &amp; Scroll:</strong> Click any navbar tab (Home, About, Features, Guidelines) to instantly jump to that section at the top of the page.</li>
+</ul>
+</div>
+</div>
+<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;">
+<div style="display: inline-block; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 1.25rem 2.5rem;">
+<span style="color: #38bdf8; font-size: 1.1rem; font-weight: 700;">Ready to put these guidelines into action?</span>
+<div style="color: #94a3b8; font-size: 0.95rem; margin-top: 0.4rem;">Click "Home" on the navigation bar above and press "Start Interview" to begin.</div>
+</div>
+</div>
+</div>''', unsafe_allow_html=True)
 
 def start_mock_interview():
     """Initializes and starts the original HR/Behavioural mock interview."""
@@ -910,10 +733,12 @@ def start_mock_interview():
 
 def render_mode_selection_page():
     """Renders the Interview Mode Selection page with Mock and Technical interview options."""
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     col_back, _ = st.columns([1, 4])
     with col_back:
         if st.button("← Back to Home", key="back_to_home_mode", type="secondary"):
             st.session_state.current_page = 'landing'
+            st.session_state.current_tab = 'Home'
             st.rerun()
             return
 
@@ -1161,6 +986,7 @@ TECHNICAL_DOMAIN_SKILLS = {
 
 def render_technical_setup_page():
     """Renders the Step 2 Technical Interview Domain and Skill Setup Page."""
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     # Navigation buttons
     col_nav1, col_nav2, _ = st.columns([1.3, 1, 3])
     with col_nav1:
@@ -1171,6 +997,7 @@ def render_technical_setup_page():
     with col_nav2:
         if st.button("⌂ Back to Home", key="back_to_home_from_setup", type="secondary"):
             st.session_state.current_page = 'landing'
+            st.session_state.current_tab = 'Home'
             st.rerun()
             return
 
@@ -1415,7 +1242,9 @@ def render_technical_setup_page():
     st.markdown('</div>', unsafe_allow_html=True)
 
 def render_technical_interview_page():
+
     """
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     Renders the exact automated Step 4 Real-Time Technical Interview Interface:
     Stage 1: Question displayed & spoken completely via TTS.
     Stage 2: Exactly 3-second delay & countdown (camera & mic inactive).
@@ -1777,6 +1606,7 @@ def render_technical_interview_page():
 
 def render_technical_submission_page():
     """Renders the Step 4 Technical Interview Submission Summary and Candidate Answer Review Page."""
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     st.markdown('<div class="page-section" style="padding-top: 1rem;">', unsafe_allow_html=True)
     
     st.title("🎉 Technical Interview Submitted!")
@@ -1939,6 +1769,7 @@ def render_technical_submission_page():
 
 def render_technical_results_page():
     """Renders the Step 6 Final Technical Interview Results Dashboard (Phase 4 Full Analytics)."""
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     if not st.session_state.get("technical_questions"):
         st.session_state.current_page = 'technical_setup'
         st.rerun()
@@ -2629,6 +2460,7 @@ def render_technical_results_page():
     with col_nav2:
         if st.button("🏠 Back to Home", key="btn_back_to_home_from_results", type="secondary", use_container_width=True):
             st.session_state.current_page = 'landing'
+            st.session_state.current_tab = 'Home'
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -2639,6 +2471,8 @@ render_technical_analysis_page = render_technical_results_page
 
 
 def render_interview_page():
+
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     if st.button("← Go to Home", type="secondary"):
         st.session_state.current_page = 'landing'
         st.rerun()
@@ -2859,6 +2693,8 @@ def render_interview_page():
             st.rerun()
 
 def render_results_page():
+
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     st.title("📊 Final Interview Verdict")
     st.write("Here is the analysis of your performance based on behavioral and simulated speech metrics.")
     st.write("---")
@@ -2910,6 +2746,7 @@ def render_results_page():
     st.write("---")
     if st.button("Restart Interview", type="primary", use_container_width=True):
         st.session_state.current_page = 'landing'
+        st.session_state.current_tab = 'Home'
         st.rerun()
 
 def main():
@@ -2917,8 +2754,13 @@ def main():
     init_session_state()
 
     # Automatically scroll to top whenever the user changes page or questions
+    st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+
+    # Automatically scroll to top whenever the user changes page, tab, or questions
     nav_key = (
         st.session_state.get('current_page'),
+        st.session_state.get('current_tab'),
+        st.session_state.get('technical_interview_stage'),
         st.session_state.get('technical_question_index', 0),
         st.session_state.get('question_index', 0)
     )
