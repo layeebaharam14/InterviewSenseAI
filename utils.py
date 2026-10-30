@@ -302,7 +302,7 @@ def apply_css():
             h2 { font-size: 1.75rem !important; }
             h3 { font-size: 1.5rem !important; }
             
-            p, .stMarkdown {
+            p {
                 font-size: 1rem !important;
                 padding-left: 0.5rem;
                 padding-right: 0.5rem;
