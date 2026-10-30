@@ -5,6 +5,7 @@ Supports 12 domains across Beginner, Intermediate, and Advanced tiers.
 """
 
 import random
+import re
 from typing import List, Dict, Any
 
 # ============================================================================
@@ -5954,6 +5955,243 @@ QUESTION_BANK = {
 }
 
 # ============================================================================
+# TECHNICAL EVALUATION RUBRICS & ENRICHMENT ENGINE
+# ============================================================================
+
+CURATED_QUESTION_RUBRICS = {
+    "Explain the difference between mutable and immutable data types in Python with examples.": {
+        "expected_answer": "Mutable data types can have their state or contents modified in-place after creation without changing their identity (memory address), such as lists, dictionaries, and sets. Immutable data types cannot be modified after creation; any modification operation constructs a new object in memory with a new identity, such as integers, floats, strings, and tuples. Modifying a mutable object preserves references, whereas modifying an immutable object rebinds the variable reference.",
+        "key_concepts": ["mutable", "immutable", "in-place modification", "memory address", "lists", "dictionaries", "strings", "tuples", "rebind"],
+        "important_points": [
+            "Mutable objects allow in-place modification (e.g., list.append, dict[key]=val).",
+            "Immutable objects cannot be altered; operations return a new object (e.g., str concatenation).",
+            "Examples of mutable: list, dict, set. Examples of immutable: int, float, str, tuple, frozenset.",
+            "Immutability guarantees hashability for dictionary keys and set elements."
+        ],
+        "common_mistakes": [
+            "Believing tuples are mutable if they contain mutable objects (the tuple itself is immutable).",
+            "Confusing variable rebinding (x = x + 1) with in-place mutation.",
+            "Stating that strings or numbers can be modified in-place."
+        ]
+    },
+    "What are Python's key features and why is it considered an interpreted language?": {
+        "expected_answer": "Python is a high-level, dynamically typed, multi-paradigm language known for readable syntax, automatic memory management via garbage collection, and an extensive standard library. It is considered an interpreted language because Python source code is first compiled into intermediate bytecode (.pyc), which is then executed line-by-line by the Python Virtual Machine (PVM) runtime interpreter rather than compiling directly to native machine code.",
+        "key_concepts": ["interpreted", "bytecode", "python virtual machine", "pvm", "dynamically typed", "garbage collection", "high-level"],
+        "important_points": [
+            "Source code is compiled to intermediate bytecode (.pyc) before interpretation.",
+            "The PVM (Python Virtual Machine) interprets and executes bytecode line-by-line.",
+            "Dynamic typing and automatic memory management provide high productivity at the cost of execution speed.",
+            "Multi-paradigm support includes object-oriented, procedural, and functional styles."
+        ],
+        "common_mistakes": [
+            "Claiming Python has no compilation step whatsoever (it compiles to bytecode).",
+            "Confusing dynamic typing with weak typing (Python is dynamically but strongly typed)."
+        ]
+    },
+    "What are the four pillars of OOP and how are classes created in Python?": {
+        "expected_answer": "The four pillars of OOP are Encapsulation (bundling data and methods while restricting direct access), Abstraction (hiding implementation complexity behind clean interfaces), Inheritance (deriving new classes from existing ones for code reuse), and Polymorphism (allowing different classes to respond to the same interface in specific ways). In Python, classes are defined using the 'class' keyword, initialized with the '__init__' constructor method, and receive the instance reference via 'self'.",
+        "key_concepts": ["encapsulation", "abstraction", "inheritance", "polymorphism", "class keyword", "__init__", "self", "objects"],
+        "important_points": [
+            "Four pillars: Encapsulation, Abstraction, Inheritance, and Polymorphism.",
+            "Classes are created using 'class ClassName:' syntax.",
+            "The '__init__' method serves as the constructor to initialize instance attributes.",
+            "'self' represents the instance of the class and must be explicitly declared as the first parameter of instance methods."
+        ],
+        "common_mistakes": [
+            "Omitting 'self' from method definitions in Python.",
+            "Confusing Abstraction (hiding complexity) with Encapsulation (binding data and restricting access).",
+            "Thinking '__init__' creates the object (it initializes it; '__new__' creates it)."
+        ]
+    },
+    "What is the difference between '==' and 'is' operators in Python?": {
+        "expected_answer": "The '==' operator checks for equality of value (whether two objects contain the same data by invoking their '__eq__' method). The 'is' operator checks for identity (whether two variable references point to the exact same object in memory by comparing their memory addresses using 'id()'). For instance, two distinct lists with identical elements [1, 2] will evaluate to True for '==' but False for 'is'.",
+        "key_concepts": ["equality", "identity", "value comparison", "memory address", "id()", "is operator", "== operator", "__eq__"],
+        "important_points": [
+            "'==' compares values or contents of objects by calling '__eq__'.",
+            "'is' checks whether two variables refer to the identical object in memory (id(a) == id(b)).",
+            "Identical values in different memory locations evaluate to True for == but False for is.",
+            "'is' should typically be used for singleton comparisons like 'x is None'."
+        ],
+        "common_mistakes": [
+            "Using '==' to check for 'None' instead of 'is None'.",
+            "Assuming small integer or string interning means 'is' should be used for value comparisons."
+        ]
+    },
+    "Explain Method Resolution Order (MRO) in Python multiple inheritance and the C3 linearization algorithm.": {
+        "expected_answer": "Method Resolution Order (MRO) defines the exact order in which base classes are searched when looking up methods and attributes in multiple inheritance hierarchies. Python uses the C3 Linearization algorithm to compute MRO, ensuring three key properties: local precedence order (subclasses precede base classes), monotonicity (a parent class's ordering is preserved across all descendants), and avoiding cyclic inheritance conflicts. MRO can be inspected on any class using the '__mro__' attribute or 'ClassName.mro()'.",
+        "key_concepts": ["mro", "method resolution order", "c3 linearization", "multiple inheritance", "monotonicity", "local precedence", "__mro__", "super()"],
+        "important_points": [
+            "MRO determines the order in which classes are scanned when a method is invoked.",
+            "Python 2.3+ uses the C3 Linearization algorithm to construct a deterministic, monotonic inheritance order.",
+            "C3 guarantees that subclasses appear before their parents and preserves the order specified in class definitions.",
+            "Accessible via ClassName.__mro__ or ClassName.mro()."
+        ],
+        "common_mistakes": [
+            "Thinking Python uses simple depth-first or breadth-first search for multiple inheritance (it uses C3).",
+            "Believing multiple inheritance causes arbitrary diamond problem ambiguities in Python."
+        ]
+    },
+    "Explain Python's Global Interpreter Lock (GIL) and its implications on CPU-bound multithreading.": {
+        "expected_answer": "The Global Interpreter Lock (GIL) is a mutex used by the standard CPython implementation to synchronize thread execution such that only one native thread executes Python bytecode at any given moment. This design prevents race conditions and ensures thread safety for CPython's reference-counting memory management. Consequently, CPU-bound multithreaded Python programs do not achieve true parallelism across multiple CPU cores; developers must use multiprocessing, native C extensions, or asynchronous I/O to achieve parallel execution for CPU-intensive workloads.",
+        "key_concepts": ["gil", "global interpreter lock", "cpython", "mutex", "cpu-bound", "multithreading", "parallelism", "reference counting", "multiprocessing"],
+        "important_points": [
+            "The GIL allows only one thread to execute Python bytecode at a time in CPython.",
+            "Designed to simplify thread-safe reference counting and avoid race conditions in memory management.",
+            "CPU-bound tasks suffer performance bottlenecks in multithreaded code due to lock contention.",
+            "I/O-bound tasks still benefit from multithreading because threads release the GIL during I/O operations.",
+            "Parallel CPU-bound execution requires the 'multiprocessing' module or alternative runtimes."
+        ],
+        "common_mistakes": [
+            "Believing the GIL prevents threads from running entirely (threads alternate, but do not execute bytecode simultaneously).",
+            "Claiming multithreading is useless in Python (it is highly effective for I/O-bound tasks).",
+            "Assuming all Python implementations have a GIL (Jython and IronPython do not)."
+        ]
+    },
+    "Explain ACID properties in DBMS and their significance in transaction management.": {
+        "expected_answer": "ACID properties define the four fundamental guarantees of reliable database transactions: Atomicity (the transaction is all-or-nothing; if any operation fails, the entire transaction rolls back), Consistency (transactions bring the database from one valid state to another satisfying all schema constraints), Isolation (concurrent transactions execute independently without interference, controlled by isolation levels), and Durability (once committed, changes are permanently written to non-volatile storage and survive system crashes).",
+        "key_concepts": ["acid", "atomicity", "consistency", "isolation", "durability", "transactions", "rollback", "commit", "concurrency control"],
+        "important_points": [
+            "Atomicity: All operations in a transaction succeed together, or all are rolled back.",
+            "Consistency: Database integrity constraints (foreign keys, checks) are maintained before and after transactions.",
+            "Isolation: Intermediate states of concurrent transactions are hidden from each other (e.g., Read Committed, Serializable).",
+            "Durability: Committed transactions persist permanently in storage via write-ahead logging (WAL) even across power outages."
+        ],
+        "common_mistakes": [
+            "Confusing Consistency in ACID with Consistency in CAP theorem.",
+            "Thinking Isolation means transactions cannot run concurrently (isolation levels allow managed concurrency).",
+            "Believing atomicity alone guarantees database validity without consistency constraints."
+        ]
+    },
+    "What is the difference between TCP and UDP protocols and when would you use each?": {
+        "expected_answer": "TCP (Transmission Control Protocol) is a connection-oriented, reliable transport protocol that uses a 3-way handshake, sequence numbers, acknowledgments, and retransmissions to guarantee in-order, error-free packet delivery with congestion control, making it ideal for web browsing (HTTP/HTTPS), email (SMTP), and file transfer. UDP (User Datagram Protocol) is a connectionless, lightweight, unreliable transport protocol that transmits datagrams without handshakes or delivery guarantees, minimizing latency and overhead, making it ideal for real-time applications such as video streaming, VoIP, DNS lookups, and multiplayer gaming.",
+        "key_concepts": ["tcp", "udp", "connection-oriented", "connectionless", "reliability", "three-way handshake", "acknowledgments", "latency", "streaming"],
+        "important_points": [
+            "TCP establishes connections via a 3-way handshake (SYN, SYN-ACK, ACK); UDP sends packets without connection setup.",
+            "TCP guarantees delivery, packet ordering, and flow/congestion control; UDP does not guarantee packet arrival or ordering.",
+            "TCP has higher header overhead (20-60 bytes); UDP has minimal header overhead (8 bytes).",
+            "Use TCP when data accuracy is critical; use UDP when low latency and speed take precedence over occasional packet loss."
+        ],
+        "common_mistakes": [
+            "Stating UDP is always faster than TCP without mentioning packet loss tolerance.",
+            "Believing TCP sends datagrams while UDP sends byte streams (TCP is stream-oriented; UDP is datagram-oriented)."
+        ]
+    },
+    "What is the difference between Primary Key and Unique Key in SQL?": {
+        "expected_answer": "A Primary Key uniquely identifies each row in a database table and strictly rejects NULL values, with each table permitted only one Primary Key (which automatically creates a clustered index by default in many RDBMSs). A Unique Key also enforces uniqueness across rows but permits one (or more, depending on the SQL engine) NULL value, and a single table can define multiple Unique Key constraints.",
+        "key_concepts": ["primary key", "unique key", "null values", "clustered index", "uniqueness", "table constraint"],
+        "important_points": [
+            "A table can have only one Primary Key, but multiple Unique Keys.",
+            "Primary Key columns cannot contain NULL values; Unique Key columns can typically accept NULL values.",
+            "Primary Keys generally create a clustered index by default, whereas Unique Keys typically create non-clustered indexes.",
+            "Both constraints enforce entity integrity and prevent duplicate values."
+        ],
+        "common_mistakes": [
+            "Believing Unique Keys cannot accept any NULL values in SQL standards.",
+            "Thinking a table can have multiple Primary Keys (it can have a composite primary key, but only one primary key constraint)."
+        ]
+    },
+    "What is virtual memory and how does paging work in modern Operating Systems?": {
+        "expected_answer": "Virtual memory is an OS memory management capability that provides an illusion of a large, contiguous address space to processes by abstracting physical RAM through secondary storage (swap/pagefile). Paging divides virtual memory into fixed-size blocks called pages (typically 4 KB) and physical memory into matching blocks called page frames. The Memory Management Unit (MMU) uses page tables and the Translation Lookaside Buffer (TLB) to map virtual addresses to physical frames. When a requested page is not in RAM, a page fault interrupt occurs, triggering the OS to load the page from disk into a frame.",
+        "key_concepts": ["virtual memory", "paging", "pages", "page frames", "page table", "mmu", "page fault", "tlb", "swap space"],
+        "important_points": [
+            "Virtual memory abstracts physical RAM, providing process isolation and larger addressable memory.",
+            "Paging splits virtual addresses into fixed-size pages and maps them to physical page frames.",
+            "The MMU performs hardware address translation with caching support from the TLB.",
+            "Page faults occur when referencing a page not currently residing in physical RAM, prompting disk retrieval."
+        ],
+        "common_mistakes": [
+            "Confusing paging (fixed-size blocks) with segmentation (variable-size logical blocks).",
+            "Thinking page faults are program errors or fatal crashes (they are normal OS hardware interrupts)."
+        ]
+    }
+}
+
+def synthesize_rubric(question_text: str, domain: str, skill: str, difficulty: str, question_type: str) -> Dict[str, Any]:
+    """
+    Intelligently synthesizes an accurate evaluation rubric for any question not explicitly curated.
+    Ensures complete coverage across all domains and skills.
+    """
+    clean_q = re.sub(r"[^\w\s]", "", question_text)
+    words = [w for w in clean_q.split() if len(w) > 3 and w.lower() not in {
+        "what", "which", "explain", "describe", "difference", "between", "python",
+        "java", "does", "with", "examples", "write", "code", "snippet", "briefly"
+    }]
+    
+    # Extract top keywords from question text
+    core_terms = words[:4] if words else [skill]
+    
+    # Key concepts synthesis
+    concepts = list(set([skill, domain] + core_terms))[:6]
+    
+    # Important points synthesis
+    important_pts = [
+        f"Accurately explain the core concept and technical definition of '{' '.join(core_terms[:2])}'.",
+        f"Describe the internal working mechanism, lifecycle, or architecture in the context of {domain}.",
+        f"Discuss practical application, performance implications, or trade-offs suitable for {difficulty} level.",
+        "Demonstrate correct syntax, algorithmic structure, or implementation principles."
+    ]
+    
+    # Common mistakes synthesis
+    common_mistakes = [
+        f"Giving a superficial or purely conversational response without specific {domain} technical terminology.",
+        "Confusing basic conceptual syntax with internal execution mechanisms or best practices.",
+        "Omitting key performance trade-offs, edge cases, or exception handling considerations."
+    ]
+    
+    # Expected answer model synthesis
+    expected_ans = (
+        f"A comprehensive answer to '{question_text}' should first establish a precise technical definition of "
+        f"{' '.join(core_terms[:3])} within {skill}. It should explain the underlying working mechanism, how it integrates "
+        f"with {domain} architectures, and its practical implementation at the {difficulty} level. "
+        f"Finally, it should address key considerations such as efficiency, error handling, and trade-offs."
+    )
+    
+    return {
+        "expected_answer": expected_ans,
+        "key_concepts": concepts,
+        "important_points": important_pts,
+        "common_mistakes": common_mistakes
+    }
+
+def enrich_question_rubric(item: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Guarantees that a question item contains:
+    - expected_answer
+    - key_concepts
+    - important_points
+    - common_mistakes
+    - difficulty
+    - skill
+    - domain
+    """
+    q_text = item.get("question", "")
+    domain = item.get("domain", "General Tech")
+    skill = item.get("skill", "General")
+    diff = item.get("difficulty", "Intermediate")
+    q_type = item.get("question_type", "Conceptual")
+
+    # If item already has all fields, retain them
+    if "expected_answer" in item and "key_concepts" in item and "important_points" in item and "common_mistakes" in item:
+        return item
+
+    # Check curated dictionary
+    curated = CURATED_QUESTION_RUBRICS.get(q_text)
+    if curated:
+        item["expected_answer"] = curated["expected_answer"]
+        item["key_concepts"] = curated["key_concepts"]
+        item["important_points"] = curated["important_points"]
+        item["common_mistakes"] = curated["common_mistakes"]
+        return item
+
+    # Fallback to intelligent synthesis
+    synth = synthesize_rubric(q_text, domain, skill, diff, q_type)
+    item["expected_answer"] = synth["expected_answer"]
+    item["key_concepts"] = synth["key_concepts"]
+    item["important_points"] = synth["important_points"]
+    item["common_mistakes"] = synth["common_mistakes"]
+    return item
+
+# ============================================================================
 # QUESTION SELECTION ENGINE
 # ============================================================================
 def generate_technical_questions(
@@ -6023,6 +6261,7 @@ def generate_technical_questions(
             item["domain"] = domain
             item["skill"] = skill
             item["difficulty"] = difficulty
+            item = enrich_question_rubric(item)
             candidates.append(item)
             
         # 2. Add fallback difficulties in prioritized order
@@ -6034,6 +6273,7 @@ def generate_technical_questions(
                 item["domain"] = domain
                 item["skill"] = skill
                 item["difficulty"] = fallback_diff
+                item = enrich_question_rubric(item)
                 candidates.append(item)
 
         # Shuffle candidates within this skill

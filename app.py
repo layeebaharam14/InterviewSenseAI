@@ -13,6 +13,7 @@ from audio_analysis import analyze_audio_behavior
 from scoring import calculate_scores
 from insights import generate_feedback
 from technical_questions import generate_technical_questions
+from technical_evaluation import evaluate_technical_interview, evaluate_technical_answer, classify_performance
 
 # Application Configuration
 st.set_page_config(page_title="InterviewSense AI", layout="centered")
@@ -176,6 +177,14 @@ def init_session_state():
         st.session_state.confirm_end_technical = False
     if 'confirm_submit_technical' not in st.session_state:
         st.session_state.confirm_submit_technical = False
+    if 'technical_evaluation_results' not in st.session_state:
+        st.session_state.technical_evaluation_results = None
+    if 'technical_overall_score' not in st.session_state:
+        st.session_state.technical_overall_score = 0
+    if 'technical_performance_level' not in st.session_state:
+        st.session_state.technical_performance_level = "Needs Improvement"
+    if 'technical_evaluation_completed' not in st.session_state:
+        st.session_state.technical_evaluation_completed = False
 
 def render_landing_page():
     # Inject Top Navigation Bar using Streamlit Radio
@@ -1329,6 +1338,10 @@ def render_technical_setup_page():
                 st.session_state.technical_interview_submitted = False
                 st.session_state.confirm_end_technical = False
                 st.session_state.confirm_submit_technical = False
+                st.session_state.technical_evaluation_results = None
+                st.session_state.technical_overall_score = 0
+                st.session_state.technical_performance_level = "Needs Improvement"
+                st.session_state.technical_evaluation_completed = False
                 # Clear previous technical answer input session keys
                 for k in list(st.session_state.keys()):
                     if k.startswith("tech_ans_input_") or k.startswith("voice_dur_"):
@@ -1692,7 +1705,7 @@ def render_technical_submission_page():
     col_a1, col_a2, col_a3 = st.columns([1.5, 1.2, 1])
     with col_a1:
         if st.button("Continue to Analysis →", key="btn_goto_analysis", type="primary", use_container_width=True):
-            st.session_state.current_page = 'technical_analysis_placeholder'
+            st.session_state.current_page = 'technical_analysis'
             st.rerun()
     with col_a2:
         if st.button("Practice Another Topic", key="btn_new_tech_setup_sub", type="secondary", use_container_width=True):
@@ -1705,63 +1718,210 @@ def render_technical_submission_page():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-def render_technical_analysis_placeholder():
-    """Renders the Step 5 Placeholder Page for Technical Performance Analysis."""
-    st.markdown('<div class="page-section" style="padding-top: 1rem;">', unsafe_allow_html=True)
+def render_technical_analysis_page():
+    """Renders the Step 5 Technical Answer Evaluation and Performance Analysis Page."""
+    if not st.session_state.get("technical_questions"):
+        st.session_state.current_page = 'technical_setup'
+        st.rerun()
+        return
+
+    # Trigger evaluation if not yet completed for this session
+    if not st.session_state.get("technical_evaluation_completed") or st.session_state.get("technical_evaluation_results") is None:
+        with st.spinner("🧠 Evaluating your technical responses across accuracy, depth, relevance, and completeness..."):
+            time.sleep(0.8) # UX transition indicator
+            results = evaluate_technical_interview(
+                st.session_state.technical_questions,
+                st.session_state.technical_answers
+            )
+            st.session_state.technical_evaluation_results = results
+            st.session_state.technical_overall_score = results["overall_score"]
+            st.session_state.technical_performance_level = results["performance_level"]
+            st.session_state.technical_evaluation_completed = True
+            st.rerun()
+            return
+
+    results = st.session_state.technical_evaluation_results
+    overall_sc = results.get("overall_score", 0)
+    perf_level = results.get("performance_level", "Good")
+
+    # Styling for performance classification badge and theme
+    if perf_level == "Excellent":
+        lvl_color, lvl_bg, lvl_border, lvl_icon = "#4ade80", "rgba(34, 197, 94, 0.15)", "rgba(34, 197, 94, 0.4)", "🌟"
+    elif perf_level == "Very Good":
+        lvl_color, lvl_bg, lvl_border, lvl_icon = "#38bdf8", "rgba(56, 189, 248, 0.15)", "rgba(56, 189, 248, 0.4)", "✅"
+    elif perf_level == "Good":
+        lvl_color, lvl_bg, lvl_border, lvl_icon = "#facc15", "rgba(250, 204, 21, 0.15)", "rgba(250, 204, 21, 0.4)", "👍"
+    elif perf_level == "Needs Improvement":
+        lvl_color, lvl_bg, lvl_border, lvl_icon = "#fb923c", "rgba(251, 146, 60, 0.15)", "rgba(251, 146, 60, 0.4)", "⚠️"
+    else:
+        lvl_color, lvl_bg, lvl_border, lvl_icon = "#f87171", "rgba(239, 68, 68, 0.15)", "rgba(239, 68, 68, 0.4)", "❌"
+
+    # Top Sub-Navigation
+    col_t1, col_t2 = st.columns([1.5, 3.5])
+    with col_t1:
+        if st.button("← Submission Summary", key="btn_back_to_sub_top", type="secondary"):
+            st.session_state.current_page = 'technical_submission'
+            st.rerun()
+            return
+
+    st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
     
-    st.title("📊 Technical Performance Analysis")
-    st.subheader("Step 5 AI Evaluation and Scoring Engine")
-    st.write("---")
+    # Evaluation Badge
+    st.markdown('<div style="text-align:center;"><div class="mode-badge" style="background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.4); color: #7dd3fc;">⚡ Technical Evaluation Engine (Step 5)</div></div>', unsafe_allow_html=True)
+    
+    st.title("📊 Technical Answer Analysis")
+    st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 1.05rem; margin-bottom: 1.5rem;'>Detailed evaluation of your answers based on technical correctness, conceptual depth, relevance, and explanation quality.</p>", unsafe_allow_html=True)
 
-    st.markdown("""
-    <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 16px; padding: 36px 30px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5); max-width: 820px; margin: 1.5rem auto; text-align: left;">
-        <div style="text-align: center; font-size: 3.5rem; margin-bottom: 12px;">🚀</div>
-        <h2 style="color: #38bdf8; text-align: center; margin-bottom: 10px;">Automated Evaluation Engine Ready for Integration</h2>
-        <p style="text-align: center; color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 26px;">
-            Your technical answers have been recorded and saved in session state. In <strong>Step 5</strong>, the Evaluation Engine will score your performance across key technical benchmarks.
-        </p>
-
-        <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px; margin-bottom: 20px;">
-            <h4 style="color: #7dd3fc; margin-bottom: 14px;">Planned Step 5 Analysis Capabilities:</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 14px;">
-                    <div style="color: #38bdf8; font-weight: 700; margin-bottom: 4px;">🎯 Conceptual Accuracy</div>
-                    <div style="color: #94a3b8; font-size: 0.9rem;">Measures alignment with official computer science definitions and core engineering concepts.</div>
-                </div>
-                <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 8px; padding: 14px;">
-                    <div style="color: #c084fc; font-weight: 700; margin-bottom: 4px;">🔑 Technical Keyword Coverage</div>
-                    <div style="color: #94a3b8; font-size: 0.9rem;">Scans for essential industry terminology, protocols, algorithms, and syntax markers.</div>
-                </div>
-                <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 8px; padding: 14px;">
-                    <div style="color: #4ade80; font-weight: 700; margin-bottom: 4px;">📈 Depth & Completeness</div>
-                    <div style="color: #94a3b8; font-size: 0.9rem;">Evaluates whether nuances, edge cases, trade-offs, and examples were provided.</div>
-                </div>
-                <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(251, 146, 60, 0.2); border-radius: 8px; padding: 14px;">
-                    <div style="color: #fb923c; font-weight: 700; margin-bottom: 4px;">💡 Constructive Feedback & Roadmap</div>
-                    <div style="color: #94a3b8; font-size: 0.9rem;">Generates domain-specific strengths, gaps, and targeted study recommendations.</div>
-                </div>
+    # 1. Performance Overview Dashboard Card
+    st.markdown(f"""
+    <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 18px; padding: 32px 28px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5); max-width: 860px; margin: 1rem auto 2rem auto; text-align: center;">
+        <div style="color: #94a3b8; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">OVERALL TECHNICAL INTERVIEW SCORE</div>
+        <div style="font-size: 3.8rem; font-weight: 900; color: #38bdf8; line-height: 1; margin-bottom: 12px; text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);">
+            {overall_sc}<span style="font-size: 1.8rem; color: #64748b; font-weight: 600;">/100</span>
+        </div>
+        <div style="margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 20px; border-radius: 20px; font-weight: 700; font-size: 1.1rem; color: {lvl_color}; background: {lvl_bg}; border: 1px solid {lvl_border};">
+                {lvl_icon} Classification: {perf_level}
+            </span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; text-align: center; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px;">
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;">
+                <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Questions Answered</div>
+                <div style="color: #ffffff; font-size: 1.4rem; font-weight: 800; margin-top: 2px;">{results['answered_questions']} / {results['total_questions']}</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;">
+                <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Average Score</div>
+                <div style="color: #38bdf8; font-size: 1.4rem; font-weight: 800; margin-top: 2px;">{results['average_score']}/100</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;">
+                <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Unanswered (Zero Marks)</div>
+                <div style="color: {'#fb923c' if results['unanswered_questions'] > 0 else '#4ade80'}; font-size: 1.4rem; font-weight: 800; margin-top: 2px;">{results['unanswered_questions']}</div>
             </div>
         </div>
 
-        <div style="background: rgba(56, 189, 248, 0.08); border-left: 4px solid #38bdf8; padding: 14px 18px; border-radius: 4px; margin-top: 10px;">
-            <div style="color: #e0f2fe; font-size: 0.95rem;">
-                ✨ <strong>Step 4 Accomplished:</strong> Text editing, microphone recording, speech transcription, answer persistence, and submission validation are now fully operational.
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: center; margin-top: 14px;">
+            <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 10px; padding: 12px;">
+                <div style="color: #4ade80; font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">🏆 Strongest Skill</div>
+                <div style="color: #ffffff; font-size: 1.05rem; font-weight: 700; margin-top: 3px;">{results['strongest_skill']}</div>
+            </div>
+            <div style="background: rgba(251, 146, 60, 0.08); border: 1px solid rgba(251, 146, 60, 0.25); border-radius: 10px; padding: 12px;">
+                <div style="color: #fb923c; font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">🎯 Focus Area (Weakest)</div>
+                <div style="color: #ffffff; font-size: 1.05rem; font-weight: 700; margin-top: 3px;">{results['weakest_skill']}</div>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1.2, 1.2, 1])
-    with col1:
-        if st.button("← Submission Summary", key="btn_back_to_sub", type="primary", use_container_width=True):
-            st.session_state.current_page = 'technical_submission'
-            st.rerun()
-    with col2:
-        if st.button("New Technical Interview", key="btn_new_tech_from_placeholder", type="secondary", use_container_width=True):
+    # 2. Detailed Question-by-Question Evaluation Breakdown
+    st.subheader("🔍 Detailed Question-by-Question Evaluation")
+    st.markdown("<p style='color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.2rem;'>Inspect the rubric breakdown, identified strengths, missing points, areas for improvement, and model answer for each question.</p>", unsafe_allow_html=True)
+
+    for i, ev in enumerate(results["evaluations"]):
+        q_sc = ev.get("score", 0)
+        q_class = classify_performance(q_sc)
+        if q_sc >= 75:
+            q_badge_color = "#4ade80"
+        elif q_sc >= 50:
+            q_badge_color = "#facc15"
+        else:
+            q_badge_color = "#f87171"
+
+        expander_title = f"Q{i+1}: {ev.get('question')} — [Score: {q_sc}/100 • {q_class}]"
+        
+        with st.expander(expander_title, expanded=(i == 0)):
+            # Metadata Tags
+            st.markdown(f"""
+            <div style="margin-bottom: 12px;">
+                <span class="meta-tag meta-tag-domain">{ev.get('domain', '')}</span>
+                <span class="meta-tag meta-tag-skill">{ev.get('skill', '')}</span>
+                <span class="meta-tag meta-tag-diff">{ev.get('difficulty', '')}</span>
+                <span class="meta-tag meta-tag-type">{ev.get('question_type', '')}</span>
+                <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: {q_badge_color}; background: rgba(15, 23, 42, 0.8); border: 1px solid {q_badge_color};">
+                    Score: {q_sc}/100
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Criteria Breakdown Grid
+            crit = ev.get("criteria_scores", {})
+            st.markdown(f"""
+            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
+                <div style="color: #38bdf8; font-weight: 700; font-size: 0.88rem; text-transform: uppercase; margin-bottom: 8px;">Scoring Criteria Breakdown:</div>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; text-align: center;">
+                    <div style="background: rgba(2, 6, 23, 0.6); padding: 8px; border-radius: 6px;">
+                        <div style="color: #94a3b8; font-size: 0.75rem;">Correctness</div>
+                        <div style="color: #ffffff; font-weight: 700; font-size: 0.95rem;">{crit.get('technical_correctness', 0)} / 40</div>
+                    </div>
+                    <div style="background: rgba(2, 6, 23, 0.6); padding: 8px; border-radius: 6px;">
+                        <div style="color: #94a3b8; font-size: 0.75rem;">Concepts</div>
+                        <div style="color: #ffffff; font-weight: 700; font-size: 0.95rem;">{crit.get('conceptual_understanding', 0)} / 25</div>
+                    </div>
+                    <div style="background: rgba(2, 6, 23, 0.6); padding: 8px; border-radius: 6px;">
+                        <div style="color: #94a3b8; font-size: 0.75rem;">Relevance</div>
+                        <div style="color: #ffffff; font-weight: 700; font-size: 0.95rem;">{crit.get('relevance', 0)} / 15</div>
+                    </div>
+                    <div style="background: rgba(2, 6, 23, 0.6); padding: 8px; border-radius: 6px;">
+                        <div style="color: #94a3b8; font-size: 0.75rem;">Completeness</div>
+                        <div style="color: #ffffff; font-weight: 700; font-size: 0.95rem;">{crit.get('completeness', 0)} / 15</div>
+                    </div>
+                    <div style="background: rgba(2, 6, 23, 0.6); padding: 8px; border-radius: 6px;">
+                        <div style="color: #94a3b8; font-size: 0.75rem;">Quality</div>
+                        <div style="color: #ffffff; font-weight: 700; font-size: 0.95rem;">{crit.get('explanation_quality', 0)} / 5</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Candidate's Submitted Response
+            st.markdown("**Your Submitted Response:**")
+            if ev.get("is_unanswered"):
+                st.warning("⚠️ *No answer submitted for this question (Score: 0/100)*")
+            else:
+                st.info(ev.get("candidate_answer", ""))
+
+            # Detailed Feedback Sections
+            col_fb1, col_fb2 = st.columns(2)
+            with col_fb1:
+                st.markdown("<div style='color: #4ade80; font-weight: 700; margin-bottom: 6px;'>✅ What You Did Well:</div>", unsafe_allow_html=True)
+                for item in ev.get("what_you_did_well", []):
+                    st.write(f"- {item}")
+
+                st.markdown("<div style='color: #fb923c; font-weight: 700; margin-top: 14px; margin-bottom: 6px;'>⚠️ Missing Points:</div>", unsafe_allow_html=True)
+                for item in ev.get("missing_points", []):
+                    st.write(f"- {item}")
+
+            with col_fb2:
+                st.markdown("<div style='color: #38bdf8; font-weight: 700; margin-bottom: 6px;'>💡 Areas to Improve:</div>", unsafe_allow_html=True)
+                for item in ev.get("areas_to_improve", []):
+                    st.write(f"- {item}")
+
+                st.markdown("<div style='color: #c084fc; font-weight: 700; margin-top: 14px; margin-bottom: 6px;'>📝 Final Assessment:</div>", unsafe_allow_html=True)
+                st.markdown(f"*{ev.get('final_evaluation', '')}*")
+
+            # Suggested Model Answer
+            st.write("---")
+            st.markdown("<div style='color: #7dd3fc; font-weight: 700; font-size: 0.92rem; margin-bottom: 6px;'>📘 Suggested Model Answer:</div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="background: rgba(15, 23, 42, 0.9); border-left: 4px solid #38bdf8; padding: 14px 18px; border-radius: 6px; color: #e2e8f0; font-size: 0.95rem; line-height: 1.6;">
+                {ev.get('suggested_answer', '')}
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.write("---")
+
+    # Action Navigation Buttons
+    col_b1, col_b2, col_b3 = st.columns([1.4, 1.2, 1])
+    with col_b1:
+        if st.button("Practice Another Topic", key="btn_practice_again", type="primary", use_container_width=True):
             st.session_state.current_page = 'technical_setup'
             st.rerun()
-    with col3:
-        if st.button("Home", key="btn_home_from_placeholder", type="secondary", use_container_width=True):
+    with col_b2:
+        if st.button("Mode Selection", key="btn_return_mode_from_analysis", type="secondary", use_container_width=True):
+            st.session_state.current_page = 'mode_selection'
+            st.rerun()
+    with col_b3:
+        if st.button("Home", key="btn_return_home_from_analysis", type="secondary", use_container_width=True):
             st.session_state.current_page = 'landing'
             st.rerun()
 
@@ -2047,8 +2207,8 @@ def main():
         render_technical_interview_page()
     elif st.session_state.current_page in ('technical_submission', 'technical_completed'):
         render_technical_submission_page()
-    elif st.session_state.current_page == 'technical_analysis_placeholder':
-        render_technical_analysis_placeholder()
+    elif st.session_state.current_page in ('technical_analysis', 'technical_analysis_placeholder'):
+        render_technical_analysis_page()
     elif st.session_state.current_page == 'interview':
         render_interview_page()
     elif st.session_state.current_page == 'results':
