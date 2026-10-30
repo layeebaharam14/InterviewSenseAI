@@ -6,6 +6,7 @@ import random
 import threading
 import speech_recognition as sr
 import re
+import uuid
 from datetime import datetime
 
 # Import internal modules
@@ -17,6 +18,14 @@ from insights import generate_feedback
 from technical_questions import generate_technical_questions
 from technical_evaluation import evaluate_technical_interview, evaluate_technical_answer, classify_performance
 from technical_report_pdf import generate_technical_pdf_report
+from technical_speech import (
+    normalize_technical_terms,
+    record_and_transcribe_audio,
+    transcribe_audio_file,
+    get_temp_audio_path,
+    cleanup_temp_audio
+)
+
 
 # Application Configuration
 st.set_page_config(page_title="InterviewSense AI", layout="centered")
@@ -75,45 +84,38 @@ def get_camera():
 
     return None
 
-def record_and_transcribe(duration, result_container):
-    r = sr.Recognizer()
-    try:
-        with sr.Microphone() as source:
-            # Fast ambient noise calibration to sync tightly with video recording
-            r.adjust_for_ambient_noise(source, duration=0.4)
-            # Record exactly for the duration
-            audio_data = r.record(source, duration=duration)
-            try:
-                text = r.recognize_google(audio_data)
-                result_container.append(text)
-            except sr.UnknownValueError:
-                result_container.append("ERROR: Speech Recognition could not understand the audio (No speech detected).")
-            except sr.RequestError as e:
-                result_container.append(f"ERROR: Google Speech API unavailable ({e}).")
-    except Exception as e:
-          result_container.append(f"ERROR: Microphone error ({e}).")
+def record_and_transcribe(duration, result_container, domain=None, skills=None, audio_file_path=None):
+    """
+    Records audio and performs technical speech recognition with contextual normalization.
+    Fully backward-compatible with Mock HR Interview when called with (duration, result_container).
+    """
+    return record_and_transcribe_audio(
+        duration=duration,
+        result_container=result_container,
+        domain=domain,
+        skills=skills,
+        audio_file_path=audio_file_path
+    )
 
-def record_technical_voice_answer(duration=15):
+def record_technical_voice_answer(duration=15, domain=None, skills=None, audio_file_path=None):
     """Records audio from microphone and returns (success: bool, text_or_error: str) for Technical Interview."""
-    r = sr.Recognizer()
-    try:
-        with sr.Microphone() as source:
-            r.adjust_for_ambient_noise(source, duration=0.8)
-            audio_data = r.record(source, duration=duration)
-            try:
-                text = r.recognize_google(audio_data)
-                if not text or not text.strip():
-                    return False, "No speech detected. Please speak closer to your microphone."
-                return True, text.strip()
-            except sr.UnknownValueError:
-                return False, "Could not understand audio. Please speak clearly into your microphone."
-            except sr.RequestError as e:
-                return False, f"Speech recognition service unavailable ({e}). Please check your internet connection or type your answer."
-    except Exception as e:
-        return False, f"Microphone error: {e}. Please ensure your microphone is connected and permissions are granted."
+    res = []
+    record_and_transcribe_audio(
+        duration=duration,
+        result_container=res,
+        domain=domain,
+        skills=skills,
+        audio_file_path=audio_file_path
+    )
+    if not res:
+        return False, "No audio response recorded."
+    first_res = res[0]
+    if first_res.startswith("ERROR:"):
+        return False, first_res.replace("ERROR:", "").strip()
+    return True, first_res.strip()
 
-def save_current_technical_answer(curr_idx, method=None):
-    """Persists the current question's answer from session state into technical_answers."""
+def save_current_technical_answer(curr_idx, method=None, raw_transcript=None, audio_path=None):
+    """Persists the current question's answer from session state into technical_answers with audio recovery paths."""
     if 'technical_questions' not in st.session_state or not st.session_state.technical_questions:
         return
     if curr_idx < 0 or curr_idx >= len(st.session_state.technical_questions):
@@ -133,7 +135,9 @@ def save_current_technical_answer(curr_idx, method=None):
         "difficulty": curr_q_data.get("difficulty", st.session_state.technical_difficulty),
         "question_type": curr_q_data.get("question_type", "Conceptual"),
         "answer_text": ans_text,
-        "answer_method": method
+        "answer_method": method,
+        "raw_transcript": raw_transcript or existing_entry.get("raw_transcript", ""),
+        "audio_path": audio_path or existing_entry.get("audio_path", "")
     }
 
 def init_session_state():
@@ -190,6 +194,14 @@ def init_session_state():
         st.session_state.technical_audio_results = {}
     if 'technical_hardware_verified' not in st.session_state:
         st.session_state.technical_hardware_verified = False
+    if 'technical_session_id' not in st.session_state:
+        st.session_state.technical_session_id = uuid.uuid4().hex[:10]
+    if 'technical_audio_files' not in st.session_state:
+        st.session_state.technical_audio_files = {}
+    if 'technical_transcripts' not in st.session_state:
+        st.session_state.technical_transcripts = {}
+    if 'technical_raw_transcripts' not in st.session_state:
+        st.session_state.technical_raw_transcripts = {}
     if 'technical_answers' not in st.session_state:
         st.session_state.technical_answers = {}
     if 'technical_interview_completed' not in st.session_state:
@@ -1621,9 +1633,16 @@ def render_technical_interview_page():
     camera_placeholder = st.empty()
     timer_placeholder = st.empty()
 
-    # Activate microphone recording concurrently in background thread
+    # Prepare temporary audio file for recovery
+    audio_path = get_temp_audio_path(st.session_state.technical_session_id, curr_idx)
+    st.session_state.technical_audio_files[curr_idx] = audio_path
+
+    # Activate microphone recording concurrently in background thread with technical context
     audio_result = []
-    audio_thread = threading.Thread(target=record_and_transcribe, args=(15, audio_result))
+    audio_thread = threading.Thread(
+        target=record_and_transcribe,
+        args=(15, audio_result, q_domain, [q_skill], audio_path)
+    )
     audio_thread.start()
 
     # Activate camera preview
@@ -1673,27 +1692,36 @@ def render_technical_interview_page():
     timer_placeholder.empty()
 
     with st.spinner(f"🧠 Processing Question {curr_q_num} answer and visual analysis..."):
-        audio_thread.join()
+        audio_thread.join(timeout=8.0)
         transcribed_text = audio_result[0] if audio_result else ""
+
+        input_key = f"tech_ans_input_{curr_idx}"
+        prev_ans = st.session_state.get(input_key, "").strip()
 
         if transcribed_text.startswith("ERROR:"):
             st.session_state.last_audio_error = transcribed_text
-            transcribed_clean = ""
+            # Never erase candidate's existing answer on transcription error!
+            if prev_ans:
+                save_current_technical_answer(curr_idx, method="text", audio_path=audio_path)
+            else:
+                save_current_technical_answer(curr_idx, method="voice", audio_path=audio_path)
         else:
             st.session_state.last_audio_error = None
             transcribed_clean = transcribed_text.strip()
+            st.session_state.technical_transcripts[curr_idx] = transcribed_clean
+            st.session_state.technical_raw_transcripts[curr_idx] = transcribed_clean
+            st.session_state[input_key] = transcribed_clean
 
-        # Save candidate answer
-        input_key = f"tech_ans_input_{curr_idx}"
-        prev_ans = st.session_state.get(input_key, "").strip()
-        if transcribed_clean:
-            final_ans = f"{prev_ans}\n\n[Voice Transcript]: {transcribed_clean}" if prev_ans else transcribed_clean
-            st.session_state[input_key] = final_ans
-            save_current_technical_answer(curr_idx, method="voice")
-        elif prev_ans:
-            save_current_technical_answer(curr_idx, method="text")
-        else:
-            save_current_technical_answer(curr_idx, method="voice")
+            # Audio fluency and behavioral quality analysis
+            a_res = analyze_audio_behavior(transcribed_clean, 15)
+            st.session_state.technical_audio_results[curr_idx] = a_res
+
+            save_current_technical_answer(
+                curr_idx,
+                method="voice",
+                raw_transcript=transcribed_clean,
+                audio_path=audio_path
+            )
 
         # MediaPipe video analysis on captured frames
         st.session_state.technical_frames[curr_idx] = sampled_frames
@@ -1774,21 +1802,23 @@ def render_technical_submission_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # Detailed Question and Answer Breakdown Accordion
-    st.subheader("🔍 Review Submitted Answers")
-    st.markdown("<p style='color: #94a3b8; font-size: 0.95rem;'>Review each question and your corresponding text or voice responses before moving to analysis.</p>", unsafe_allow_html=True)
+    # Detailed Question and Answer Breakdown Accordion with Voice Playback & Editing
+    st.subheader("🔍 Review & Refine Submitted Answers")
+    st.markdown("<p style='color: #94a3b8; font-size: 0.95rem;'>Review each question, listen to your audio recording, refine your answers, or re-transcribe speech before final technical evaluation.</p>", unsafe_allow_html=True)
 
     for i, q_data in enumerate(st.session_state.technical_questions):
         ans_entry = st.session_state.technical_answers.get(i, {})
         ans_text = ans_entry.get("answer_text", "").strip()
         ans_method = ans_entry.get("answer_method", "text")
+        audio_file = st.session_state.technical_audio_files.get(i) or ans_entry.get("audio_path")
+        has_audio = audio_file and os.path.exists(audio_file)
         is_answered = bool(ans_text)
         status_label = "✅ Answered" if is_answered else "⚠️ Unanswered"
         
         q_title = f"{status_label} — Q{i+1}: {q_data.get('question')}"
         with st.expander(q_title, expanded=(i == 0)):
             st.markdown(f"""
-            <div style="margin-bottom: 10px;">
+            <div style="margin-bottom: 8px;">
                 <span class="meta-tag meta-tag-skill">{q_data.get('skill', 'General')}</span>
                 <span class="meta-tag meta-tag-diff">{q_data.get('difficulty', st.session_state.technical_difficulty)}</span>
                 <span class="meta-tag meta-tag-type">{q_data.get('question_type', 'Conceptual')}</span>
@@ -1797,11 +1827,68 @@ def render_technical_submission_page():
             
             st.markdown(f"**Question:** {q_data.get('question')}")
             st.write("---")
-            if is_answered:
-                st.markdown(f"**Your Submitted Response:** *(Recorded via {ans_method.capitalize()} • {len(ans_text.split())} words)*")
-                st.info(ans_text)
-            else:
-                st.warning("⚠️ No answer was provided for this question.")
+
+            # Audio Recovery & Playback Controls
+            if has_audio:
+                col_aud1, col_aud2 = st.columns([2.5, 1.5])
+                with col_aud1:
+                    st.caption("🎙️ Recorded Voice Audio (15 Seconds):")
+                    st.audio(audio_file, format="audio/wav")
+                with col_aud2:
+                    st.caption("Audio Recovery:")
+                    if st.button("🔄 Re-transcribe Audio", key=f"btn_retranscribe_{i}", type="secondary", use_container_width=True):
+                        with st.spinner("Re-transcribing audio recording..."):
+                            success, result_text = transcribe_audio_file(
+                                audio_file,
+                                domain=q_data.get("domain", st.session_state.technical_domain),
+                                skills=[q_data.get("skill", "General")]
+                            )
+                            if success:
+                                st.session_state[f"sub_edit_ans_{i}"] = result_text
+                                st.session_state[f"tech_ans_input_{i}"] = result_text
+                                ans_entry["answer_text"] = result_text
+                                ans_entry["answer_method"] = "voice_retranscribed"
+                                st.session_state.technical_answers[i] = ans_entry
+                                st.session_state.technical_audio_results[i] = analyze_audio_behavior(result_text, 15)
+                                st.success("✅ Re-transcription successful! Answer updated.")
+                                st.rerun()
+                            else:
+                                st.error(f"Re-transcription note: {result_text}")
+
+            # Editable Response Text Area
+            edit_key = f"sub_edit_ans_{i}"
+            if edit_key not in st.session_state:
+                st.session_state[edit_key] = ans_text
+
+            edited_val = st.text_area(
+                f"Your Answer for Q{i+1} (Editable):",
+                value=st.session_state[edit_key],
+                height=110,
+                key=f"text_area_q_{i}",
+                placeholder="Type or edit your technical answer here..."
+            )
+
+            # Detect manual edits and update button
+            col_save, _ = st.columns([1.5, 3])
+            with col_save:
+                if st.button(f"💾 Save Q{i+1} Answer", key=f"btn_save_edit_{i}", type="secondary"):
+                    clean_edited = edited_val.strip()
+                    st.session_state[edit_key] = clean_edited
+                    st.session_state[f"tech_ans_input_{i}"] = clean_edited
+                    ans_entry["answer_text"] = clean_edited
+                    ans_entry["answer_method"] = "edited"
+                    st.session_state.technical_answers[i] = ans_entry
+                    if clean_edited:
+                        st.session_state.technical_audio_results[i] = analyze_audio_behavior(clean_edited, 15)
+                    st.success(f"Saved Q{i+1} response!")
+                    st.rerun()
+
+            # Live synchronization so unclicked changes before submit are also caught
+            if edited_val.strip() != ans_text:
+                ans_entry["answer_text"] = edited_val.strip()
+                ans_entry["answer_method"] = "edited"
+                st.session_state.technical_answers[i] = ans_entry
+                st.session_state[f"tech_ans_input_{i}"] = edited_val.strip()
 
     st.write("---")
 
@@ -2207,6 +2294,12 @@ def render_technical_results_page():
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         if st.button("🔄 Retake Technical Interview", key="btn_retake_tech_interview", type="primary", use_container_width=True):
+            # Clean up temporary audio files from previous session
+            cleanup_temp_audio(st.session_state.get('technical_session_id'))
+            st.session_state.technical_session_id = uuid.uuid4().hex[:10]
+            st.session_state.technical_audio_files = {}
+            st.session_state.technical_transcripts = {}
+            st.session_state.technical_raw_transcripts = {}
             # Cleanly reset only technical interview session variables
             st.session_state.technical_questions = []
             st.session_state.technical_question_index = 0
