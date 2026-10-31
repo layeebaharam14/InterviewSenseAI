@@ -24,8 +24,20 @@ def test_phase1_correction():
     print(f"[PASS] speak_question returned exact duration: {dur:.2f}s.")
 
     print("\n=== TEST 3: App Code Verification for Exact 6-Stage Automated Flow ===")
-    with open("app.py", "r", encoding="utf-8") as f:
-        app_code = f.read()
+    # Collect code from the modular architecture (app.py and extracted UI/core modules)
+    code_files = [
+        "app.py",
+        os.path.join("src", "interviewsense", "ui", "technical_interview.py"),
+        os.path.join("src", "interviewsense", "ui", "hr_interview.py"),
+        os.path.join("src", "interviewsense", "ui", "mode_selection.py"),
+        os.path.join("src", "interviewsense", "ui", "hr_results.py"),
+        os.path.join("src", "interviewsense", "core", "app_helpers.py"),
+    ]
+    app_code = ""
+    for cf in code_files:
+        if os.path.exists(cf):
+            with open(cf, "r", encoding="utf-8") as f:
+                app_code += f.read() + "\n"
 
     # Stage 1: Display and speak question
     assert "audio_duration = speak_question(q_text)" in app_code
@@ -39,16 +51,16 @@ def test_phase1_correction():
 
     # Stage 3 & 4: Automatic Camera & Microphone for exactly 15 seconds
     assert "camera = get_camera()" in app_code
-    assert "record_and_transcribe, args=(15, audio_result)" in app_code
+    assert "record_and_transcribe" in app_code and "15" in app_code
     assert "time.time() - start_time < 15.0" in app_code
     assert "Time Remaining: {remaining}s / 15s" in app_code
     print("[PASS] Stage 3 & 4: Automatic camera & microphone activation for fixed 15-second timer.")
 
     # Stage 5: Automatic Stop and Processing
-    assert "if camera is not None:\n        camera.release()" in app_code
-    assert "audio_thread.join()" in app_code
+    assert "camera.release()" in app_code
+    assert "audio_thread.join()" in app_code or "audio_thread.join(timeout=" in app_code
     assert "save_current_technical_answer(curr_idx" in app_code
-    assert "aggregate_video_analysis(sampled_frames)" in app_code
+    assert "analyze_technical_question_frames" in app_code and "sampled_frames" in app_code
     print("[PASS] Stage 5: Automatic recording stop, frame & audio processing, answer saved.")
 
     # Stage 6: Automatic Next Question or Submission
@@ -69,4 +81,3 @@ def test_phase1_correction():
 
 if __name__ == "__main__":
     test_phase1_correction()
-

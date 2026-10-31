@@ -38,6 +38,7 @@ import pandas as pd
 # Local helpers (shared across UI modules via app_helpers)
 from src.interviewsense.core.app_helpers import (
     QUESTION_POOL,
+    TECHNICAL_DOMAIN_SKILLS,
     get_question_duration,
     get_technical_question_duration,
     get_camera,

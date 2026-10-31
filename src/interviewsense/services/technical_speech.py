@@ -291,13 +291,14 @@ def cleanup_temp_audio(session_id: str = None):
     if not os.path.exists(d):
         return
     now = time.time()
+    clean_sid = re.sub(r"[^a-zA-Z0-9_-]", "", str(session_id))[:16] if session_id else None
     try:
         for fname in os.listdir(d):
             fpath = os.path.join(d, fname)
             if not os.path.isfile(fpath):
                 continue
             should_remove = False
-            if session_id and session_id in fname:
+            if clean_sid and clean_sid in fname:
                 should_remove = True
             elif now - os.path.getmtime(fpath) > 7200:
                 should_remove = True

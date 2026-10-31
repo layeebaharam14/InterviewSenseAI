@@ -20,6 +20,35 @@ from src.interviewsense.ui.hr_results import render_results_page
 st.set_page_config(page_title="InterviewSense AI", layout="centered")
 
 
+
+# Core Helpers Re-export for Backward Compatibility
+from src.interviewsense.core.app_helpers import (
+    QUESTION_POOL,
+    TECHNICAL_DOMAIN_SKILLS,
+    get_question_duration,
+    get_technical_question_duration,
+    get_camera,
+    record_and_transcribe,
+    record_technical_voice_answer,
+    save_current_technical_answer,
+)
+render_technical_analysis_page = render_technical_results_page
+
+__all__ = [
+    "main",
+    "init_session_state",
+    "QUESTION_POOL",
+    "TECHNICAL_DOMAIN_SKILLS",
+    "get_question_duration",
+    "get_technical_question_duration",
+    "get_camera",
+    "record_and_transcribe",
+    "record_technical_voice_answer",
+    "save_current_technical_answer",
+    "render_technical_analysis_page",
+]
+
+
 def main():
     apply_css()
     init_session_state()

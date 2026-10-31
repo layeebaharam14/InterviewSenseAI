@@ -4,6 +4,30 @@ import os
 import base64
 import uuid
 
+from pathlib import Path
+
+
+def _get_project_root() -> str:
+    """
+    Reliably resolves the absolute path to the project root directory.
+    Walks up from this file's location (src/interviewsense/utils/) until
+    it locates project markers such as 'app.py', '.streamlit', or 'assets'.
+    Does not depend on the current working directory.
+    """
+    current = Path(__file__).resolve().parent
+    for p in [current] + list(current.parents):
+        if (p / "app.py").exists() or (p / ".streamlit").exists() or (p / "assets").exists():
+            return str(p)
+    # Fallback to current working directory if it contains project markers
+    cwd = Path.cwd()
+    if (cwd / "app.py").exists() or (cwd / "assets").exists():
+        return str(cwd)
+    # Default fallback: 3 levels up from src/interviewsense/utils
+    if len(current.parents) >= 3:
+        return str(current.parents[2])
+    return str(current)
+
+
 def _read_image_as_data_url(path: str) -> str | None:
     try:
         with open(path, "rb") as f:
@@ -17,9 +41,11 @@ def _read_image_as_data_url(path: str) -> str | None:
 @st.cache_data
 def _get_background_video_base64() -> str | None:
     """Reads and caches background video as base64 string to keep app fast and smooth."""
+    root = _get_project_root()
     video_paths = [
-        os.path.join(os.path.dirname(__file__), "assets", "background_video.mp4"),
-        os.path.join(os.path.dirname(__file__), "WhatsApp Video 2026-10-30 at 12.12.21 PM.mp4"),
+        os.path.join(root, "assets", "background_video.mp4"),
+        os.path.join(root, "static", "background_video.mp4"),
+        os.path.join(root, "WhatsApp Video 2026-10-30 at 12.12.21 PM.mp4"),
     ]
     for p in video_paths:
         if os.path.exists(p):
@@ -32,7 +58,8 @@ def _get_background_video_base64() -> str | None:
 
 def apply_css():
     """Injects custom CSS for the dark blue gradient theme, background video, and UI styling."""
-    static_video_path = os.path.join(os.path.dirname(__file__), "static", "background_video.mp4")
+    root = _get_project_root()
+    static_video_path = os.path.join(root, "static", "background_video.mp4")
     if os.path.exists(static_video_path):
         video_src = "app/static/background_video.mp4"
     else:
@@ -54,7 +81,7 @@ def apply_css():
             background: transparent !important;
         """
     else:
-        bg_path = os.path.join(os.path.dirname(__file__), "assets", "home_bg.png")
+        bg_path = os.path.join(root, "assets", "home_bg.png")
         bg_data_url = _read_image_as_data_url(bg_path)
         background_css = (
             f"""

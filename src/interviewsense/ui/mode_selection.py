@@ -1,4 +1,5 @@
 import streamlit as st
+import random
 import streamlit.components.v1 as components
 import cv2
 import time
@@ -37,6 +38,7 @@ import pandas as pd
 
 # Local helpers (shared across UI modules via app_helpers)
 from src.interviewsense.core.app_helpers import (
+    TECHNICAL_DOMAIN_SKILLS,
     QUESTION_POOL,
     get_question_duration,
     get_technical_question_duration,
@@ -205,118 +207,3 @@ def render_mode_selection_page():
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
-
-TECHNICAL_DOMAIN_SKILLS = {
-    "Python Programming": [
-        "Python Basics",
-        "OOP in Python",
-        "Functions and Modules",
-        "Exception Handling",
-        "File Handling",
-        "Lists, Tuples, Sets and Dictionaries",
-        "Libraries and Packages"
-    ],
-    "Java Programming": [
-        "Core Java",
-        "OOP Concepts",
-        "Collections Framework",
-        "Exception Handling",
-        "Multithreading",
-        "JDBC",
-        "Java 8 Features"
-    ],
-    "C Programming": [
-        "C Basics",
-        "Pointers",
-        "Arrays and Strings",
-        "Structures and Unions",
-        "Functions",
-        "Memory Management",
-        "File Handling"
-    ],
-    "C++ Programming": [
-        "C++ Basics",
-        "OOP Concepts",
-        "Pointers and References",
-        "STL",
-        "Templates",
-        "Memory Management",
-        "Exception Handling"
-    ],
-    "Data Structures and Algorithms": [
-        "Arrays",
-        "Linked Lists",
-        "Stacks and Queues",
-        "Trees and Graphs",
-        "Searching and Sorting",
-        "Hashing",
-        "Dynamic Programming",
-        "Time and Space Complexity"
-    ],
-    "Web Development": [
-        "HTML",
-        "CSS",
-        "JavaScript",
-        "React",
-        "Node.js",
-        "REST APIs",
-        "Frontend Development",
-        "Backend Development"
-    ],
-    "Database Management Systems (DBMS)": [
-        "DBMS Fundamentals",
-        "Relational Database Concepts",
-        "Normalization",
-        "Transactions",
-        "Indexing",
-        "Joins",
-        "ACID Properties"
-    ],
-    "SQL": [
-        "SQL Basics",
-        "SELECT Queries",
-        "Joins",
-        "Subqueries",
-        "Aggregate Functions",
-        "Group By and Having",
-        "Constraints",
-        "Views"
-    ],
-    "Operating Systems": [
-        "Process Management",
-        "Threads",
-        "CPU Scheduling",
-        "Deadlocks",
-        "Memory Management",
-        "Virtual Memory",
-        "File Systems"
-    ],
-    "Computer Networks": [
-        "OSI Model",
-        "TCP/IP",
-        "IP Addressing",
-        "DNS",
-        "HTTP and HTTPS",
-        "Routing",
-        "Network Security Basics"
-    ],
-    "Artificial Intelligence and Machine Learning": [
-        "AI Fundamentals",
-        "Machine Learning Basics",
-        "Supervised Learning",
-        "Unsupervised Learning",
-        "Neural Networks",
-        "Deep Learning",
-        "Natural Language Processing"
-    ],
-    "Software Engineering": [
-        "SDLC",
-        "Agile Methodology",
-        "Software Testing",
-        "Software Design",
-        "Design Patterns",
-        "Version Control Concepts",
-        "Software Maintenance"
-    ]
-}
-

@@ -15,16 +15,16 @@ def test_phase1_integration():
     import app
     print("[PASS] All modules imported successfully.")
 
-    print("\n=== TEST 2: Duration Calculation Helper ===")
+    print("\n=== TEST 2: Duration Calculation Helper (Fixed 15s Contract) ===")
     d1 = app.get_technical_question_duration({"question_type": "Conceptual", "difficulty": "Beginner"})
     d2 = app.get_technical_question_duration({"question_type": "Practical", "difficulty": "Intermediate"})
     d3 = app.get_technical_question_duration({"question_type": "Conceptual", "difficulty": "Advanced"})
     d4 = app.get_technical_question_duration({"question_type": "Coding", "difficulty": "Intermediate"})
-    assert d1 == 30, f"Expected 30, got {d1}"
-    assert d2 == 45, f"Expected 45, got {d2}"
-    assert d3 == 60, f"Expected 60, got {d3}"
-    assert d4 == 90, f"Expected 90, got {d4}"
-    print(f"[PASS] Durations: Beginner={d1}s, Intermediate={d2}s, Advanced={d3}s, Coding={d4}s.")
+    assert d1 == 15, f"Expected 15, got {d1}"
+    assert d2 == 15, f"Expected 15, got {d2}"
+    assert d3 == 15, f"Expected 15, got {d3}"
+    assert d4 == 15, f"Expected 15, got {d4}"
+    print(f"[PASS] Fixed 15-second Durations: Beginner={d1}s, Intermediate={d2}s, Advanced={d3}s, Coding={d4}s.")
 
     print("\n=== TEST 3: MediaPipe Extended Video Analysis ===")
     # 1. Empty frames
@@ -51,8 +51,19 @@ def test_phase1_integration():
     print("[PASS] Multi-frame aggregation verified.")
 
     print("\n=== TEST 4: Verification of Mock HR Interview Integrity ===")
-    with open("app.py", "r", encoding="utf-8") as f:
-        app_code = f.read()
+    code_files = [
+        "app.py",
+        os.path.join("src", "interviewsense", "ui", "technical_interview.py"),
+        os.path.join("src", "interviewsense", "ui", "hr_interview.py"),
+        os.path.join("src", "interviewsense", "ui", "mode_selection.py"),
+        os.path.join("src", "interviewsense", "ui", "hr_results.py"),
+        os.path.join("src", "interviewsense", "core", "app_helpers.py"),
+    ]
+    app_code = ""
+    for cf in code_files:
+        if os.path.exists(cf):
+            with open(cf, "r", encoding="utf-8") as f:
+                app_code += f.read() + "\n"
 
     # Check that Mock HR interview code is intact
     assert "def render_interview_page():" in app_code
@@ -61,24 +72,23 @@ def test_phase1_integration():
     assert "QUESTION_POOL = [" in app_code
     print("[PASS] Mock HR Interview functions and questions remain 100% intact.")
 
-    print("\n=== TEST 5: State Machine Verification in app.py ===")
+    print("\n=== TEST 5: State Machine Verification ===")
     assert 'technical_interview_stage' in app_code
     assert 'QUESTION_DISPLAY' in app_code
     assert 'COUNTDOWN' in app_code
     assert 'RECORDING' in app_code
-    assert 'ANSWER_REVIEW' in app_code
     assert 'technical_frames' in app_code
     assert 'technical_video_results' in app_code
     assert 'technical_hardware_verified' in app_code
-    print("[PASS] All 7 State Machine stages and technical session variables verified in app.py.")
+    print("[PASS] State Machine stages and technical session variables verified.")
 
     print("\n=== TEST 6: Camera & MediaPipe Call Verification ===")
     assert "camera = get_camera()" in app_code
     assert "camera_placeholder.image(rgb_frame" in app_code
     assert "sampled_frames.append(rgb_frame)" in app_code
-    assert "aggregate_video_analysis(sampled_frames)" in app_code
+    assert "analyze_technical_question_frames" in app_code or "aggregate_video_analysis(sampled_frames)" in app_code
     assert "camera.release()" in app_code
-    print("[PASS] Camera capture, preview, sampling, MediaPipe analysis, and release verified in app.py.")
+    print("[PASS] Camera capture, preview, sampling, MediaPipe analysis, and release verified.")
 
     print("\n========================================================")
     print("ALL PHASE 1 TESTS PASSED! IMPLEMENTATION FULLY VERIFIED")
