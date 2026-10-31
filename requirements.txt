@@ -6,3 +6,4 @@ pyttsx3
 Pillow
 SpeechRecognition
 PyAudio
+pymupdf

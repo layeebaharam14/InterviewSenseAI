@@ -8,4 +8,7 @@ temp_*.wav
 .venv/
 env/
 scratch/
-
+backup_original/
+*.pyc
+.DS_Store
+Thumbs.db
