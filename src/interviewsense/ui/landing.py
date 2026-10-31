@@ -66,16 +66,90 @@ def render_landing_page():
 .stApp, [data-testid="stAppViewContainer"] {
     color: white !important;
 }
-/* Force the white card container to be transparent and vertically center home content */
+/* Force container backgrounds to be transparent on home */
 .block-container, .main, [data-testid="stHeader"] {
     background: transparent !important;
     background-color: transparent !important;
 }
-body:has(#home-bg-injector) .main .block-container,
-.main:has(#home-bg-injector) .block-container,
-.block-container:has(#home-bg-injector) {
+/* Collapse empty marker containers so they do not add unwanted vertical gap */
+div[data-testid="stElementContainer"]:has(#top-anchor),
+div[data-testid="stElementContainer"]:has(#landing-page-marker),
+div[data-testid="stElementContainer"]:has(#home-bg-injector) {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+/* Ensure fixed navbar container wrapper takes 0 flow height */
+div[data-testid="stElementContainer"]:has(div[data-testid="stRadio"]) {
+    position: absolute !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+/* Full viewport layout for Home tab offset by top navbar */
+[data-testid="stMainBlockContainer"]:has(.st-key-home_hero),
+.block-container:has(.st-key-home_hero),
+section[data-testid="stMain"]:has(.st-key-home_hero) [data-testid="stMainBlockContainer"],
+body:has(.st-key-home_hero) [data-testid="stMainBlockContainer"],
+body:has(.st-key-home_hero) .block-container,
+body:has(#home-bg-injector) [data-testid="stMainBlockContainer"],
+body:has(#home-bg-injector) .block-container {
+    padding-top: 3.4rem !important;
+    padding-bottom: 0 !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    max-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
     justify-content: center !important;
-    min-height: calc(100vh - 4rem) !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+}
+/* Parent vertical block on Home stretches and centers content without gap */
+[data-testid="stMainBlockContainer"]:has(.st-key-home_hero) > div[data-testid="stVerticalBlock"],
+.block-container:has(.st-key-home_hero) > div[data-testid="stVerticalBlock"],
+body:has(#home-bg-injector) [data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlock"],
+body:has(#home-bg-injector) .block-container > div[data-testid="stVerticalBlock"] {
+    gap: 0 !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+/* Homepage Hero Centered Flex Container */
+div[data-testid="stLayoutWrapper"]:has(.st-key-home_hero),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-home_hero),
+.st-key-home_hero {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: calc(100vh - 3.4rem) !important;
+    min-height: calc(100dvh - 3.4rem) !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+}
+.st-key-home_hero {
+    max-width: 800px !important;
+}
+.st-key-home_hero > div[data-testid="stElementContainer"] {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+.st-key-home_hero > div[data-testid="stElementContainer"] > div {
+    width: 100% !important;
+    text-align: center !important;
 }
 /* Base text styling for Streamlit components to look neon */
 [data-testid="stMarkdownContainer"] h1, [data-testid="stMarkdownContainer"] h2, [data-testid="stMarkdownContainer"] h3 {
@@ -106,16 +180,15 @@ body:has(#home-bg-injector) .main .block-container,
 </style>
 </div>""", unsafe_allow_html=True)
         
-        st.markdown('<div class="page-section">', unsafe_allow_html=True)
-        st.title("🎯 InterviewSense AI")
-        st.subheader("Real-Time Interview Performance Analyzer")
-        st.write("Simulate a real interview environment. We will ask you questions, analyze your behavioral responses via webcam, and provide detailed feedback.")
-        st.write("---")
-        
-        if st.button("Start Interview", type="primary", use_container_width=True):
-            st.session_state.current_page = 'mode_selection'
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(key="home_hero"):
+            st.title("🎯 InterviewSense AI")
+            st.subheader("Real-Time Interview Performance Analyzer")
+            st.write("Simulate a real interview environment. We will ask you questions, analyze your behavioral responses via webcam, and provide detailed feedback.")
+            st.write("---")
+            
+            if st.button("Start Interview", type="primary", use_container_width=True):
+                st.session_state.current_page = 'mode_selection'
+                st.rerun()
 
     elif st.session_state.current_tab == "About":
         # CSS specific to the About tab to turn st.columns into distinct glass cards
