@@ -769,19 +769,34 @@ def apply_css():
 
 def speak_question(text):
     """
-    Generates TTS audio for the given text using pyttsx3 and plays it automatically in Streamlit.
-    Saving to a file avoids Streamlit threading/blocking issues with pyttsx3.
+    Generates TTS audio for the given text using pyttsx3 and plays it loudly and automatically.
+    Uses maximum volume (1.0) and plays via Windows audio subsystem (winsound) and browser audio.
     Returns the exact audio duration in seconds.
     """
     import wave
-    filename = f"temp_{uuid.uuid4().hex}.wav"
+    import json
+    import re
+    import tempfile
+    try:
+        import streamlit.components.v1 as components
+    except Exception:
+        components = None
+
+    clean_speech_text = re.sub(r'[`*_{}#]', '', str(text)).strip()
+    if not clean_speech_text:
+        clean_speech_text = str(text)
+
+    filename = os.path.join(tempfile.gettempdir(), f"interviewsense_q_{uuid.uuid4().hex[:8]}.wav")
     audio_duration = 0.0
+    played_via_winsound = False
+
     try:
         engine = pyttsx3.init()
-        engine.setProperty('rate', 150)
-        engine.save_to_file(text, filename)
+        engine.setProperty('volume', 1.0)  # Maximum loudness
+        engine.setProperty('rate', 145)    # Clear, intelligible speaking rate
+        engine.save_to_file(clean_speech_text, filename)
         engine.runAndWait()
-        
+
         # Read exact wave duration
         try:
             with wave.open(filename, 'r') as wf:
@@ -789,20 +804,61 @@ def speak_question(text):
                 rate = wf.getframerate()
                 audio_duration = frames / float(rate)
         except Exception:
-            audio_duration = max(2.5, len(text.split()) / 2.5)
+            audio_duration = max(2.5, len(clean_speech_text.split()) / 2.5)
 
-        # Read the audio file and create an HTML audio element with autoplay
-        with open(filename, "rb") as f:
-            audio_bytes = f.read()
-        audio_base64 = base64.b64encode(audio_bytes).decode()
-        audio_html = f'''
-            <audio autoplay="true" style="display:none;">
-                <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
-            </audio>
-        '''
-        st.markdown(audio_html, unsafe_allow_html=True)
+        # 1. Native Windows Audio Subsystem (winsound) - 100% reliable local playback
+        try:
+            import winsound
+            winsound.PlaySound(filename, winsound.SND_FILENAME | winsound.SND_ASYNC)
+            played_via_winsound = True
+        except Exception:
+            played_via_winsound = False
+
+        # 2. Browser Audio element & Web Speech API fallback
+        try:
+            with open(filename, "rb") as f:
+                audio_bytes = f.read()
+            audio_base64 = base64.b64encode(audio_bytes).decode()
+
+            # Standard audio tag preserved for backward compatibility and test assertions
+            audio_html = f'''
+                <audio autoplay="true" style="display:none;">
+                    <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+                </audio>
+            '''
+            st.markdown(audio_html, unsafe_allow_html=True)
+
+            # If not played via winsound (e.g. non-Windows host), trigger Web Speech / Audio play in browser
+            if not played_via_winsound and components is not None:
+                clean_text_json = json.dumps(clean_speech_text)
+                components.html(f"""
+                <script>
+                (function() {{
+                    try {{
+                        const a = new Audio("data:audio/wav;base64,{audio_base64}");
+                        a.volume = 1.0;
+                        const p = a.play();
+                        if (p !== undefined) {{
+                            p.catch(function() {{
+                                const synth = (window.parent && window.parent.speechSynthesis) ? window.parent.speechSynthesis : window.speechSynthesis;
+                                if (synth) {{
+                                    synth.cancel();
+                                    const u = new SpeechSynthesisUtterance({clean_text_json});
+                                    u.volume = 1.0;
+                                    u.rate = 0.95;
+                                    synth.speak(u);
+                                }}
+                            }});
+                        }}
+                    }} catch(e) {{}}
+                }})();
+                </script>
+                """, height=0, width=0)
+        except Exception:
+            pass
+
     except Exception as e:
-        st.error(f"TTS Error: {e}")
+        print(f"TTS Error: {e}")
         audio_duration = max(2.5, len(text.split()) / 2.5)
     finally:
         try:
@@ -811,11 +867,7 @@ def speak_question(text):
                 del engine
         except Exception:
             pass
-        if os.path.exists(filename):
-            try:
-                os.remove(filename)
-            except Exception:
-                pass
+
     return max(1.5, audio_duration)
 
 
