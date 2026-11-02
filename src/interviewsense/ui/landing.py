@@ -49,6 +49,7 @@ from src.interviewsense.core.app_helpers import (
 
 def render_landing_page():
     st.markdown('<div id="top-anchor"></div><div id="landing-page-marker"></div>', unsafe_allow_html=True)
+    scroll_to_top()
     # Inject Top Navigation Bar using Streamlit Radio
     st.radio(
         "Navigation",

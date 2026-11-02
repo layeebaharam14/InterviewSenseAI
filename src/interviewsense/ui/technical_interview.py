@@ -54,6 +54,7 @@ def render_technical_interview_page():
         return
 
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    scroll_to_top()
 
     if not st.session_state.technical_questions:
         st.session_state.current_page = 'technical_setup'

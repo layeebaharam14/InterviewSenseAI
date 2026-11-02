@@ -50,6 +50,7 @@ from src.interviewsense.core.app_helpers import (
 def render_interview_page():
 
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    scroll_to_top()
     if st.button("← Go to Home", type="secondary"):
         st.session_state.current_page = 'landing'
         st.session_state.current_tab = 'Home'

@@ -82,6 +82,7 @@ def render_mode_selection_page():
             st.rerun()
             return
 
+    scroll_to_top()
     st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
     st.title("🎯 Choose Your Interview Mode")
     st.subheader("Select the type of interview you want to practice and improve your skills.")

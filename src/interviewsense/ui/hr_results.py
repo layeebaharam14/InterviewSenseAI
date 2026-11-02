@@ -50,6 +50,7 @@ from src.interviewsense.core.app_helpers import (
 def render_results_page():
 
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    scroll_to_top()
     st.title("📊 Final Interview Verdict")
     st.write("Here is the analysis of your performance based on behavioral and simulated speech metrics.")
     st.write("---")
