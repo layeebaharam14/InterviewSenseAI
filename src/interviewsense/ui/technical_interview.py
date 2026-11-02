@@ -38,6 +38,7 @@ import pandas as pd
 # Local helpers (shared across UI modules via app_helpers)
 from src.interviewsense.core.app_helpers import (
     QUESTION_POOL,
+    TECHNICAL_DOMAIN_SKILLS,
     get_question_duration,
     get_technical_question_duration,
     get_camera,
@@ -48,15 +49,12 @@ from src.interviewsense.core.app_helpers import (
 
 
 def render_technical_interview_page():
-    """
-    Renders the exact automated Step 4 Real-Time Technical Interview Interface:
-    Stage 1: Question displayed & spoken completely via TTS.
-    Stage 2: Exactly 3-second delay & countdown (camera & mic inactive).
-    Stage 3 & 4: Automatic camera & microphone activation for a fixed 15-second timer.
-    Stage 5: Automatic stop at 0s, processing frames & audio, saving answer.
-    Stage 6: Automatic progression to next question (or submission on final question).
-    """
+    """Renders the Step 3 Live Interactive Technical Interview Page with fixed 15s question flow."""
+    if st.session_state.get('current_page') != 'technical_interview':
+        return
+
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+
     if not st.session_state.technical_questions:
         st.session_state.current_page = 'technical_setup'
         st.rerun()
@@ -78,7 +76,6 @@ def render_technical_interview_page():
         st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
         st.title("📹 Camera & Microphone Verification")
         st.subheader("Verifying your camera and microphone readiness for the live technical interview.")
-        st.write("---")
 
         components.html(
             """
@@ -110,6 +107,7 @@ def render_technical_interview_page():
             st.success("✅ Camera and Microphone Ready! Proceeding to interview...")
             time.sleep(1.0)
             st.session_state.technical_hardware_verified = True
+            scroll_to_top()
             st.rerun()
             return
         else:
@@ -121,6 +119,7 @@ def render_technical_interview_page():
             with c_sim:
                 if st.button("Continue in Demo / Simulation Mode", key="btn_sim_tech_hw", type="secondary", use_container_width=True):
                     st.session_state.technical_hardware_verified = True
+                    scroll_to_top()
                     st.rerun()
             return
 
@@ -157,12 +156,12 @@ def render_technical_interview_page():
         """)
 
     st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
-    
+
     # Simulation Badge
     st.markdown('<div style="text-align:center;"><div class="mode-badge" style="background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.4); color: #7dd3fc;">⚡ Live Real-Time Technical Interview</div></div>', unsafe_allow_html=True)
-    
+
     st.title("💻 Technical Interview")
-    
+
     # Progress Display
     st.markdown(f"<div style='text-align: center; color: #94a3b8; font-size: 1.05rem; margin-bottom: 0.5rem;'>Question <strong>{curr_q_num}</strong> of <strong>{total_q}</strong></div>", unsafe_allow_html=True)
     st.progress(curr_q_num / total_q)
@@ -228,14 +227,28 @@ def render_technical_interview_page():
     </div>
     """)
 
+    # Stable, fixed layout placeholders in consistent vertical order:
+    # 1. Stage status banner
+    stage_status_placeholder = st.empty()
+
+    # 2. Centered camera viewport slot
+    col_cam_l, col_cam_c, col_cam_r = st.columns([1, 6, 1])
+    with col_cam_c:
+        camera_placeholder = st.empty()
+
+    # 3. Timer & guidance banner
+    timer_placeholder = st.empty()
+
     # =========================================================================
     # STAGE 1: DISPLAY QUESTION & SPEAK AUDIO COMPLETELY
     # =========================================================================
     spoken_key = f"tech_spoken_{curr_idx}"
     if not st.session_state.get(spoken_key, False):
-        audio_status = st.empty()
-        audio_status.markdown("""
-        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 16px; margin: 12px 0; text-align: center;">
+        # Set spoken flag FIRST to prevent duplicate executions
+        st.session_state[spoken_key] = True
+
+        stage_status_placeholder.markdown("""
+        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 14px 20px; margin: 8px 0; text-align: center;">
             <p style="color: #38bdf8; font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">
                 🔊 Speaking Question... Please listen carefully.
             </p>
@@ -245,26 +258,47 @@ def render_technical_interview_page():
         </div>
         """, unsafe_allow_html=True)
 
-        audio_duration = speak_question(q_text)
-        st.session_state[spoken_key] = True
+        camera_placeholder.markdown("""
+        <div class="camera-standby-box">
+            <div style="font-size: 3rem; margin-bottom: 10px;">📹</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">
+                Camera & Microphone Standby
+            </div>
+            <div style="font-size: 0.9rem; color: #94a3b8;">
+                Listening to question audio. Recording begins after the 3-second countdown.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # Wait for audio to finish playing completely in user browser before countdown
+        timer_placeholder.markdown("""
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 10px 20px; text-align: center;">
+            <span style="color: #94a3b8; font-size: 0.9rem;">⏳ 15-second recording timer will start after question audio and countdown.</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        audio_duration = speak_question(q_text)
         time.sleep(audio_duration + 0.3)
-        audio_status.empty()
 
     # =========================================================================
     # STAGE 2: EXACT THREE-SECOND COUNTDOWN (CAMERA & MIC INACTIVE)
     # =========================================================================
     countdown_key = f"tech_countdown_done_{curr_idx}"
     if not st.session_state.get(countdown_key, False):
-        countdown_box = st.empty()
+        stage_status_placeholder.markdown("""
+        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 12px 20px; margin: 8px 0; text-align: center;">
+            <span style="color: #facc15; font-size: 1.05rem; font-weight: 700;">
+                ⏳ Preparing response recording...
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
         for count in (3, 2, 1):
-            countdown_box.markdown(f"""
-            <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 2px solid #facc15; border-radius: 16px; padding: 35px 20px; text-align: center; margin: 18px auto; max-width: 480px; box-shadow: 0 0 30px rgba(250, 204, 21, 0.25);">
-                <div style="font-size: 4rem; font-weight: 900; color: #facc15; text-shadow: 0 0 20px rgba(250, 204, 21, 0.5);">
+            camera_placeholder.markdown(f"""
+            <div class="camera-standby-box" style="border-color: rgba(250, 204, 21, 0.5);">
+                <div style="font-size: 4.5rem; font-weight: 900; color: #facc15; text-shadow: 0 0 25px rgba(250, 204, 21, 0.6); line-height: 1;">
                     {count}
                 </div>
-                <div style="font-size: 1.15rem; color: #ffffff; font-weight: 600; margin-top: 10px;">
+                <div style="font-size: 1.2rem; color: #ffffff; font-weight: 700; margin-top: 12px;">
                     Get Ready to Answer
                 </div>
                 <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">
@@ -272,23 +306,25 @@ def render_technical_interview_page():
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            timer_placeholder.markdown(f"""
+            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(250, 204, 21, 0.2); border-radius: 12px; padding: 10px 20px; text-align: center;">
+                <span style="color: #facc15; font-size: 0.95rem; font-weight: 600;">Starting in {count}...</span>
+            </div>
+            """, unsafe_allow_html=True)
             time.sleep(1.0)
 
-        countdown_box.empty()
         st.session_state[countdown_key] = True
 
     # =========================================================================
     # STAGE 3 & 4: AUTOMATIC CAMERA & MICROPHONE ACTIVATION (FIXED 15s TIMER)
     # =========================================================================
-    render_html("""
-    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px;">
+    stage_status_placeholder.markdown("""
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px 0 12px 0;">
         <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px #ef4444;"></span>
         <span style="color: #ef4444; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px;">🔴 LIVE RECORDING IN PROGRESS — 15 SECONDS</span>
     </div>
-    """)
-
-    camera_placeholder = st.empty()
-    timer_placeholder = st.empty()
+    """, unsafe_allow_html=True)
 
     # Prepare temporary audio file for recovery
     audio_path = get_temp_audio_path(st.session_state.technical_session_id, curr_idx)
@@ -331,7 +367,7 @@ def render_technical_interview_page():
         # Update countdown display (15 down to 0)
         timer_color = "#4ade80" if remaining > 7 else ("#facc15" if remaining > 3 else "#ef4444")
         timer_placeholder.markdown(f"""
-        <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 20px; margin: 12px 0; text-align: center;">
+        <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 20px; margin: 8px 0; text-align: center;">
             <div style="color: {timer_color}; font-size: 1.55rem; font-weight: 800; margin-bottom: 4px;">
                 ⏳ Time Remaining: {remaining}s / 15s
             </div>
@@ -351,7 +387,15 @@ def render_technical_interview_page():
     camera_placeholder.empty()
     timer_placeholder.empty()
 
-    with st.spinner(f"🧠 Processing Question {curr_q_num} answer and visual analysis..."):
+    stage_status_placeholder.markdown(f"""
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 16px; margin: 10px 0; text-align: center;">
+        <span style="color: #38bdf8; font-size: 1.1rem; font-weight: 700;">
+            🧠 Processing Question {curr_q_num} answer and visual analysis...
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.spinner(f"Processing Question {curr_q_num} response..."):
         audio_thread.join(timeout=8.0)
         transcribed_text = audio_result[0] if audio_result else ""
 
@@ -397,18 +441,31 @@ def render_technical_interview_page():
     # STAGE 6: AUTOMATIC NEXT QUESTION TRANSITION
     # =========================================================================
     if curr_idx + 1 < total_q:
-        st.success(f"✅ Question {curr_q_num} recorded! Moving to Question {curr_q_num + 1}...")
+        stage_status_placeholder.markdown(f"""
+        <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 12px; padding: 16px; margin: 10px 0; text-align: center;">
+            <span style="color: #4ade80; font-size: 1.1rem; font-weight: 700;">
+                ✅ Question {curr_q_num} recorded! Moving to Question {curr_q_num + 1}...
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
         time.sleep(1.2)
         st.session_state.technical_question_index += 1
         st.session_state.technical_interview_stage = "QUESTION_DISPLAY"
+        scroll_to_top()
         st.rerun()
     else:
-        st.success("🎉 All technical questions completed! Proceeding to submission summary...")
+        stage_status_placeholder.markdown("""
+        <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 12px; padding: 16px; margin: 10px 0; text-align: center;">
+            <span style="color: #4ade80; font-size: 1.15rem; font-weight: 700;">
+                🎉 All technical questions completed! Proceeding to submission summary...
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
         time.sleep(1.5)
         st.session_state.technical_interview_completed = True
         st.session_state.technical_interview_submitted = True
         st.session_state.current_page = 'technical_submission'
+        scroll_to_top()
         st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
-

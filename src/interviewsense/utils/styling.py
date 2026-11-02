@@ -346,19 +346,52 @@ def apply_css():
         }
         
         /* Center image/camera input */
-        .stImage {
+        .stImage, div[data-testid="stImage"] {
             margin: 0 auto !important;
-            max-width: 600px !important;
-            border-radius: 16px !important;
+            max-width: 640px !important;
+            border-radius: 14px !important;
             overflow: hidden !important;
-            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            display: flex;
-            justify-content: center;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
+            border: 1px solid rgba(56, 189, 248, 0.25) !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
         }
-        .stImage > img {
-            border-radius: 16px !important;
+        .stImage > img, div[data-testid="stImage"] img {
+            border-radius: 14px !important;
             max-width: 100% !important;
+            margin: 0 auto !important;
+            display: block !important;
+        }
+
+        /* Container card styling for st.container(border=True) */
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: linear-gradient(145deg, #0b1120, #0f172a) !important;
+            border: 1px solid rgba(56, 189, 248, 0.22) !important;
+            border-radius: 14px !important;
+            padding: 16px 20px !important;
+            margin-bottom: 14px !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35) !important;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"] > div {
+            gap: 0.6rem !important;
+        }
+
+        /* Standby camera preview box to prevent vertical layout shift */
+        .camera-standby-box {
+            background: linear-gradient(145deg, #070d19, #0b1329);
+            border: 2px dashed rgba(56, 189, 248, 0.3);
+            border-radius: 14px;
+            height: 340px;
+            max-width: 640px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.5);
         }
 
         /* 6. MEDIA QUERY FOR MOBILE RESPONSIVENESS */
@@ -809,53 +842,55 @@ def speak_question(text):
         # 1. Native Windows Audio Subsystem (winsound) - 100% reliable local playback
         try:
             import winsound
+            # Stop any previously playing audio to prevent overlapping speech
+            winsound.PlaySound(None, winsound.SND_PURGE)
             winsound.PlaySound(filename, winsound.SND_FILENAME | winsound.SND_ASYNC)
             played_via_winsound = True
         except Exception:
             played_via_winsound = False
 
-        # 2. Browser Audio element & Web Speech API fallback
-        try:
-            with open(filename, "rb") as f:
-                audio_bytes = f.read()
-            audio_base64 = base64.b64encode(audio_bytes).decode()
+        # 2. Browser Audio element & Web Speech API fallback (executed ONLY when not already played via winsound)
+        if not played_via_winsound:
+            try:
+                with open(filename, "rb") as f:
+                    audio_bytes = f.read()
+                audio_base64 = base64.b64encode(audio_bytes).decode()
 
-            # Standard audio tag preserved for backward compatibility and test assertions
-            audio_html = f'''
-                <audio autoplay="true" style="display:none;">
-                    <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
-                </audio>
-            '''
-            st.markdown(audio_html, unsafe_allow_html=True)
+                # Standard audio tag for browser playback
+                audio_html = f'''
+                    <audio autoplay="true" style="display:none;">
+                        <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+                    </audio>
+                '''
+                st.markdown(audio_html, unsafe_allow_html=True)
 
-            # If not played via winsound (e.g. non-Windows host), trigger Web Speech / Audio play in browser
-            if not played_via_winsound and components is not None:
-                clean_text_json = json.dumps(clean_speech_text)
-                components.html(f"""
-                <script>
-                (function() {{
-                    try {{
-                        const a = new Audio("data:audio/wav;base64,{audio_base64}");
-                        a.volume = 1.0;
-                        const p = a.play();
-                        if (p !== undefined) {{
-                            p.catch(function() {{
-                                const synth = (window.parent && window.parent.speechSynthesis) ? window.parent.speechSynthesis : window.speechSynthesis;
-                                if (synth) {{
-                                    synth.cancel();
-                                    const u = new SpeechSynthesisUtterance({clean_text_json});
-                                    u.volume = 1.0;
-                                    u.rate = 0.95;
-                                    synth.speak(u);
-                                }}
-                            }});
-                        }}
-                    }} catch(e) {{}}
-                }})();
-                </script>
-                """, height=0, width=0)
-        except Exception:
-            pass
+                if components is not None:
+                    clean_text_json = json.dumps(clean_speech_text)
+                    components.html(f"""
+                    <script>
+                    (function() {{
+                        try {{
+                            const a = new Audio("data:audio/wav;base64,{audio_base64}");
+                            a.volume = 1.0;
+                            const p = a.play();
+                            if (p !== undefined) {{
+                                p.catch(function() {{
+                                    const synth = (window.parent && window.parent.speechSynthesis) ? window.parent.speechSynthesis : window.speechSynthesis;
+                                    if (synth) {{
+                                        synth.cancel();
+                                        const u = new SpeechSynthesisUtterance({clean_text_json});
+                                        u.volume = 1.0;
+                                        u.rate = 0.95;
+                                        synth.speak(u);
+                                    }}
+                                }});
+                            }}
+                        }} catch(e) {{}}
+                    }})();
+                    </script>
+                    """, height=0, width=0)
+            except Exception:
+                pass
 
     except Exception as e:
         print(f"TTS Error: {e}")

@@ -50,16 +50,20 @@ from src.interviewsense.core.app_helpers import (
 
 def render_technical_setup_page():
     """Renders the Step 2 Technical Interview Domain and Skill Setup Page."""
+    if st.session_state.get('current_page') != 'technical_setup':
+        return
+
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+
     # Navigation buttons
-    col_nav1, col_nav2, _ = st.columns([1.3, 1, 3])
+    col_nav1, col_nav2, _ = st.columns([1.2, 1.2, 3])
     with col_nav1:
         if st.button("← Back to Modes", key="back_to_modes_btn", type="secondary"):
             st.session_state.current_page = 'mode_selection'
             st.rerun()
             return
     with col_nav2:
-        if st.button("⌂ Back to Home", key="back_to_home_from_setup", type="secondary"):
+        if st.button("🏠 Back to Home", key="back_to_home_from_setup", type="secondary"):
             st.session_state.current_page = 'landing'
             st.session_state.current_tab = 'Home'
             st.rerun()
@@ -68,19 +72,10 @@ def render_technical_setup_page():
     st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
     st.title("⚙️ Configure Your Technical Interview")
     st.subheader("Choose your technical domain and skills to generate an interview tailored to your knowledge.")
-    st.write("---")
 
-    # Custom styling for setup cards and skill chips
+    # Scoped styling for setup elements and skill chips
     st.markdown("""
     <style>
-    .setup-card {
-        background: linear-gradient(145deg, #0b1120, #0f172a);
-        border: 1px solid rgba(56, 189, 248, 0.2);
-        border-radius: 14px;
-        padding: 16px 20px;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
-    }
     .setup-step-header {
         color: #38bdf8;
         font-size: 1.2rem;
@@ -112,147 +107,157 @@ def render_technical_setup_page():
     """, unsafe_allow_html=True)
 
     # CANDIDATE PROFILE SECTION
-    st.markdown('<div class="setup-card">', unsafe_allow_html=True)
-    st.markdown('<div class="setup-step-header">👤 Candidate Profile (Optional)</div>', unsafe_allow_html=True)
-    st.caption("Provide your name for personalized report generation and analytics scorecard.")
-    cand_input = st.text_input(
-        "Candidate Name",
-        value=st.session_state.get("candidate_name", ""),
-        placeholder="e.g. Alex Johnson",
-        key="candidate_name_setup_input",
-        label_visibility="collapsed"
-    )
-    if cand_input != st.session_state.get("candidate_name", ""):
-        st.session_state.candidate_name = cand_input.strip()
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown('<div class="setup-step-header">👤 Candidate Profile (Optional)</div>', unsafe_allow_html=True)
+        st.caption("Provide your name for personalized report generation and analytics scorecard.")
+        cand_input = st.text_input(
+            "Candidate Name",
+            value=st.session_state.get("candidate_name", ""),
+            placeholder="e.g. Alex Johnson",
+            key="candidate_name_setup_input",
+            label_visibility="collapsed"
+        )
+        if cand_input != st.session_state.get("candidate_name", ""):
+            st.session_state.candidate_name = cand_input.strip()
 
     # SECTION 1: DOMAIN SELECTION
-    st.markdown('<div class="setup-card">', unsafe_allow_html=True)
-    st.markdown('<div class="setup-step-header">📌 1. Select Your Technical Domain</div>', unsafe_allow_html=True)
-    st.caption("Select the primary programming language or computer science domain for your interview.")
+    with st.container(border=True):
+        st.markdown('<div class="setup-step-header">📌 1. Select Your Technical Domain</div>', unsafe_allow_html=True)
+        st.caption("Select the primary programming language or computer science domain for your interview.")
 
-    domain_list = list(TECHNICAL_DOMAIN_SKILLS.keys())
-    current_domain_idx = domain_list.index(st.session_state.technical_domain) if st.session_state.technical_domain in domain_list else 0
+        domain_list = list(TECHNICAL_DOMAIN_SKILLS.keys())
+        current_domain_idx = (
+            domain_list.index(st.session_state.technical_domain)
+            if st.session_state.technical_domain in domain_list
+            else None
+        )
 
-    selected_domain = st.selectbox(
-        "Technical Domain",
-        options=domain_list,
-        index=current_domain_idx,
-        key="tech_domain_select",
-        label_visibility="collapsed"
-    )
+        selected_domain = st.selectbox(
+            "Technical Domain",
+            options=domain_list,
+            index=current_domain_idx,
+            placeholder="Select your domain",
+            key="tech_domain_select",
+            label_visibility="collapsed"
+        )
 
-    # Detect domain change and reset skills
-    if selected_domain != st.session_state.previous_technical_domain:
-        st.session_state.technical_domain = selected_domain
-        st.session_state.previous_technical_domain = selected_domain
-        st.session_state.technical_skills = []
-        for k in list(st.session_state.keys()):
-            if k.startswith("skill_chk_"):
-                del st.session_state[k]
-        st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
+        # Detect domain change and reset skills
+        if selected_domain != st.session_state.previous_technical_domain:
+            st.session_state.technical_domain = selected_domain
+            st.session_state.previous_technical_domain = selected_domain
+            st.session_state.technical_skills = []
+            for k in list(st.session_state.keys()):
+                if k.startswith("skill_chk_"):
+                    del st.session_state[k]
+            if selected_domain is not None:
+                st.rerun()
 
     # SECTION 2: SKILL SELECTION
-    available_skills = TECHNICAL_DOMAIN_SKILLS[st.session_state.technical_domain]
+    with st.container(border=True):
+        domain_label = f" ({st.session_state.technical_domain})" if st.session_state.technical_domain else ""
+        st.markdown(f'<div class="setup-step-header">🎯 2. Select Your Skills{domain_label}</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="setup-card">', unsafe_allow_html=True)
-    st.markdown(f'<div class="setup-step-header">🎯 2. Select Your Skills ({st.session_state.technical_domain})</div>', unsafe_allow_html=True)
-    st.caption("Select one or more topics. When you switch domains, skill selections automatically reset.")
+        if st.session_state.technical_domain and st.session_state.technical_domain in TECHNICAL_DOMAIN_SKILLS:
+            available_skills = TECHNICAL_DOMAIN_SKILLS[st.session_state.technical_domain]
+            st.caption(f"Select one or more topics for {st.session_state.technical_domain}. When you switch domains, skill selections automatically reset.")
 
-    # Select All / Clear Selection Controls
-    col_s1, col_s2, _ = st.columns([1, 1.2, 2.5])
-    with col_s1:
-        if st.button("✓ Select All", key="btn_select_all_skills", type="secondary"):
-            st.session_state.technical_skills = list(available_skills)
-            for s in available_skills:
-                st.session_state[f"skill_chk_{st.session_state.technical_domain}_{s}"] = True
-            st.rerun()
-    with col_s2:
-        if st.button("✕ Clear Selection", key="btn_clear_skills", type="secondary"):
-            st.session_state.technical_skills = []
-            for s in available_skills:
-                st.session_state[f"skill_chk_{st.session_state.technical_domain}_{s}"] = False
-            st.rerun()
+            # Select All / Clear Selection Controls
+            col_s1, col_s2, _ = st.columns([1, 1.2, 2.5])
+            with col_s1:
+                if st.button("✓ Select All", key="btn_select_all_skills", type="secondary"):
+                    st.session_state.technical_skills = list(available_skills)
+                    for s in available_skills:
+                        st.session_state[f"skill_chk_{st.session_state.technical_domain}_{s}"] = True
+                    st.rerun()
+            with col_s2:
+                if st.button("✕ Clear Selection", key="btn_clear_skills", type="secondary"):
+                    st.session_state.technical_skills = []
+                    for s in available_skills:
+                        st.session_state[f"skill_chk_{st.session_state.technical_domain}_{s}"] = False
+                    st.rerun()
 
-    # Dynamic Checkboxes in 2 Columns
-    col_left, col_right = st.columns(2)
-    selected_now = []
+            # Dynamic Checkboxes in 2 Columns
+            col_left, col_right = st.columns(2)
+            selected_now = []
 
-    for idx, skill in enumerate(available_skills):
-        target_col = col_left if (idx % 2 == 0) else col_right
-        chk_key = f"skill_chk_{st.session_state.technical_domain}_{skill}"
-        if chk_key not in st.session_state:
-            st.session_state[chk_key] = (skill in st.session_state.technical_skills)
-        
-        # Checkbox bound directly to key without redundant value parameter
-        checked = target_col.checkbox(
-            skill,
-            key=chk_key
-        )
-        if checked:
-            selected_now.append(skill)
+            for idx, skill in enumerate(available_skills):
+                target_col = col_left if (idx % 2 == 0) else col_right
+                chk_key = f"skill_chk_{st.session_state.technical_domain}_{skill}"
+                if chk_key not in st.session_state:
+                    st.session_state[chk_key] = (skill in st.session_state.technical_skills)
 
-    # Keep session state updated with user's interactive selections
-    st.session_state.technical_skills = selected_now
+                checked = target_col.checkbox(
+                    skill,
+                    key=chk_key
+                )
+                if checked:
+                    selected_now.append(skill)
 
-    # Clear display of selected skills
-    if st.session_state.technical_skills:
-        chips_markup = "".join([f'<span class="skill-chip">{s}</span>' for s in st.session_state.technical_skills])
-        render_html(f"""
-        <div class="selected-summary-box">
-            <div style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; margin-bottom: 6px;">
-                ACTIVE TOPICS ({len(st.session_state.technical_skills)} SELECTED):
-            </div>
-            <div>{chips_markup}</div>
-        </div>
-        """)
-    else:
-        st.warning("⚠️ Please select at least one skill to enable generating the technical interview.")
+            # Keep session state updated with user's interactive selections
+            st.session_state.technical_skills = selected_now
 
-    st.markdown('</div>', unsafe_allow_html=True)
+            # Clear display of selected skills
+            if st.session_state.technical_skills:
+                chips_markup = "".join([f'<span class="skill-chip">{s}</span>' for s in st.session_state.technical_skills])
+                render_html(f"""
+                <div class="selected-summary-box">
+                    <div style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; margin-bottom: 6px;">
+                        ACTIVE TOPICS ({len(st.session_state.technical_skills)} SELECTED):
+                    </div>
+                    <div>{chips_markup}</div>
+                </div>
+                """)
+            else:
+                st.warning("⚠️ Please select at least one skill to enable generating the technical interview.")
+        else:
+            st.info("ℹ️ Please select your technical domain above to view and select relevant skills.")
 
     # SECTION 3 & 4: DIFFICULTY AND QUESTION COUNT
     col_d, col_q = st.columns(2, gap="large")
 
     with col_d:
-        st.markdown('<div class="setup-card" style="height: 100%;">', unsafe_allow_html=True)
-        st.markdown('<div class="setup-step-header">📊 3. Interview Difficulty</div>', unsafe_allow_html=True)
-        st.caption("Select the question challenge level.")
-        
-        difficulty_options = ["Beginner", "Intermediate", "Advanced"]
-        diff_idx = difficulty_options.index(st.session_state.technical_difficulty) if st.session_state.technical_difficulty in difficulty_options else 1
-        
-        selected_diff = st.selectbox(
-            "Difficulty Level",
-            options=difficulty_options,
-            index=diff_idx,
-            key="tech_diff_select",
-            label_visibility="collapsed"
-        )
-        st.session_state.technical_difficulty = selected_diff
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown('<div class="setup-step-header">📊 3. Interview Difficulty</div>', unsafe_allow_html=True)
+            st.caption("Select the question challenge level.")
+
+            difficulty_options = ["Beginner", "Intermediate", "Advanced"]
+            diff_idx = (
+                difficulty_options.index(st.session_state.technical_difficulty)
+                if st.session_state.technical_difficulty in difficulty_options
+                else None
+            )
+
+            selected_diff = st.selectbox(
+                "Difficulty Level",
+                options=difficulty_options,
+                index=diff_idx,
+                placeholder="Select interview difficulty",
+                key="tech_diff_select",
+                label_visibility="collapsed"
+            )
+            st.session_state.technical_difficulty = selected_diff
 
     with col_q:
-        st.markdown('<div class="setup-card" style="height: 100%;">', unsafe_allow_html=True)
-        st.markdown('<div class="setup-step-header">🔢 4. Number of Questions</div>', unsafe_allow_html=True)
-        st.caption("Select the total question length.")
-        
-        question_count_options = ["5 Questions", "10 Questions", "15 Questions"]
-        count_idx = question_count_options.index(st.session_state.technical_num_questions) if st.session_state.technical_num_questions in question_count_options else 0
-        
-        selected_count = st.selectbox(
-            "Questions Count",
-            options=question_count_options,
-            index=count_idx,
-            key="tech_num_q_select",
-            label_visibility="collapsed"
-        )
-        st.session_state.technical_num_questions = selected_count
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown('<div class="setup-step-header">🔢 4. Number of Questions</div>', unsafe_allow_html=True)
+            st.caption("Select the total question length.")
 
-    st.write("---")
+            question_count_options = ["3 Questions", "5 Questions", "10 Questions", "15 Questions"]
+            count_idx = (
+                question_count_options.index(st.session_state.technical_num_questions)
+                if st.session_state.technical_num_questions in question_count_options
+                else None
+            )
+
+            selected_count = st.selectbox(
+                "Questions Count",
+                options=question_count_options,
+                index=count_idx,
+                placeholder="Select number of questions",
+                key="tech_num_q_select",
+                label_visibility="collapsed"
+            )
+            st.session_state.technical_num_questions = selected_count
 
     # SECTION 5: GENERATE TECHNICAL INTERVIEW BUTTON WITH VALIDATION & GENERATION ENGINE
     if st.button("🚀 Generate Technical Interview", key="btn_generate_tech_interview", type="primary", use_container_width=True):
@@ -263,13 +268,15 @@ def render_technical_setup_page():
             st.error("⚠️ Please select at least one skill before proceeding to generate the technical interview.")
         elif not st.session_state.technical_difficulty:
             st.error("Please select an interview difficulty.")
+        elif not st.session_state.technical_num_questions:
+            st.error("Please select the number of questions.")
         else:
             # Parse requested question count
             try:
                 num_q = int(str(st.session_state.technical_num_questions).split()[0])
             except Exception:
                 num_q = 5
-                
+
             # Generate technical questions from the question bank
             generated_qs = generate_technical_questions(
                 domain=st.session_state.technical_domain,
@@ -277,7 +284,7 @@ def render_technical_setup_page():
                 difficulty=st.session_state.technical_difficulty,
                 num_questions=num_q
             )
-            
+
             if not generated_qs:
                 st.error("Unable to find questions matching the selected criteria. Please select additional skills.")
             else:
@@ -296,6 +303,7 @@ def render_technical_setup_page():
                 st.session_state.technical_overall_score = 0
                 st.session_state.technical_performance_level = "Needs Improvement"
                 st.session_state.technical_evaluation_completed = False
+                st.session_state.technical_hardware_verified = False
                 # Clear previous technical answer input and speech session keys
                 for k in list(st.session_state.keys()):
                     if any(k.startswith(prefix) for prefix in [
@@ -304,7 +312,8 @@ def render_technical_setup_page():
                     ]):
                         del st.session_state[k]
                 st.session_state.current_page = 'technical_interview'
+                scroll_to_top()
                 st.rerun()
+                return
 
     st.markdown('</div>', unsafe_allow_html=True)
-

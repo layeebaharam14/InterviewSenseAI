@@ -32,15 +32,15 @@ def init_session_state():
     if 'candidate_name' not in st.session_state:
         st.session_state.candidate_name = ""
     if 'technical_domain' not in st.session_state:
-        st.session_state.technical_domain = "Python Programming"
+        st.session_state.technical_domain = None
     if 'technical_skills' not in st.session_state:
         st.session_state.technical_skills = []
     if 'technical_difficulty' not in st.session_state:
-        st.session_state.technical_difficulty = "Intermediate"
+        st.session_state.technical_difficulty = None
     if 'technical_num_questions' not in st.session_state:
-        st.session_state.technical_num_questions = "5 Questions"
+        st.session_state.technical_num_questions = None
     if 'previous_technical_domain' not in st.session_state:
-        st.session_state.previous_technical_domain = "Python Programming"
+        st.session_state.previous_technical_domain = None
     if 'technical_questions' not in st.session_state:
         st.session_state.technical_questions = []
     if 'technical_question_index' not in st.session_state:
