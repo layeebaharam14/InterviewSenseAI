@@ -51,6 +51,7 @@ from src.interviewsense.core.app_helpers import (
 def render_technical_results_page():
     """Renders the Step 6 Final Technical Interview Results Dashboard (Phase 4 Full Analytics)."""
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    scroll_to_top()
     if not st.session_state.get("technical_questions"):
         st.session_state.current_page = 'technical_setup'
         st.rerun()
@@ -68,9 +69,11 @@ def render_technical_results_page():
             st.session_state.technical_overall_score = results["overall_score"]
             st.session_state.technical_performance_level = results["performance_level"]
             st.session_state.technical_evaluation_completed = True
+            scroll_to_top()
             st.rerun()
             return
 
+    scroll_to_top()
     results = st.session_state.technical_evaluation_results
     overall_sc = results.get("overall_score", 0)
     perf_level = results.get("performance_level", "Good")
@@ -777,6 +780,7 @@ def render_technical_results_page():
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
+    scroll_to_top()
 
 
 # Backward-compatibility alias

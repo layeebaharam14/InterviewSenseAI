@@ -440,8 +440,8 @@ def apply_css():
         }
 
         /* 7. SINGLE PAGE NAVIGATION UI CSS */
-        html {
-            scroll-behavior: smooth !important;
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"], .stMain, .main, section.main, [data-testid="block-container"], .block-container, [data-testid="stAppScrollToBottomContainer"] {
+            scroll-behavior: auto !important;
         }
         
         /* Make precise room for fixed navbar on all tabs of the landing page */
@@ -800,6 +800,219 @@ def apply_css():
         </style>
     """, unsafe_allow_html=True)
 
+    # Install persistent Scroll Engine directly in main application window
+    try:
+        engine_script = """
+        <div id="top-anchor"></div>
+        <script>
+        (function() {
+            try {
+                var pWin = (window.parent && window.parent.document) ? window.parent : window;
+                var pDoc = pWin.document || document;
+                if (!pDoc) return;
+
+                try {
+                    if ('scrollRestoration' in pWin.history) {
+                        pWin.history.scrollRestoration = 'manual';
+                    }
+                } catch(e) {}
+
+                if (!pWin.__interviewSenseScrollEngine) {
+                    pWin.__interviewSenseScrollEngine = {
+                        active: false,
+                        deadline: 0,
+                        rafId: null,
+                        navStartTime: 0,
+
+                        getTargets: function() {
+                            var list = [];
+                            var selectors = [
+                                '[data-testid="stAppViewContainer"]',
+                                '[data-testid="stMain"]',
+                                '[data-testid="stAppScrollToBottomContainer"]',
+                                '[data-testid="stMainBlockContainer"]',
+                                '.stMain',
+                                '.main',
+                                'section.main',
+                                'section.stMain',
+                                '[data-testid="block-container"]',
+                                '.block-container',
+                                '[data-testid="stApp"]'
+                            ];
+                            for (var i = 0; i < selectors.length; i++) {
+                                var el = pDoc.querySelector(selectors[i]);
+                                if (el && list.indexOf(el) === -1) list.push(el);
+                            }
+                            if (pDoc.documentElement && list.indexOf(pDoc.documentElement) === -1) list.push(pDoc.documentElement);
+                            if (pDoc.body && list.indexOf(pDoc.body) === -1) list.push(pDoc.body);
+                            return list;
+                        },
+
+                        resetAll: function() {
+                            var targets = this.getTargets();
+                            for (var i = 0; i < targets.length; i++) {
+                                var el = targets[i];
+                                if (el) {
+                                    if (el.scrollTop !== 0) el.scrollTop = 0;
+                                    if (el.scrollLeft !== 0) el.scrollLeft = 0;
+                                    if (typeof el.scrollTo === 'function') {
+                                        try {
+                                            el.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                                        } catch(e) {
+                                            try { el.scrollTo(0, 0); } catch(err) {}
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Scan any scrolled elements inside Streamlit container
+                            try {
+                                var allScrolled = pDoc.querySelectorAll('[data-testid="stAppViewContainer"] *, .stMain *, .main *, section *');
+                                for (var s = 0; s < allScrolled.length; s++) {
+                                    if (allScrolled[s].scrollTop > 0) {
+                                        allScrolled[s].scrollTop = 0;
+                                    }
+                                }
+                            } catch(e) {}
+
+                            var anchor = pDoc.getElementById('top-anchor');
+                            if (anchor && typeof anchor.scrollIntoView === 'function') {
+                                try {
+                                    anchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+                                } catch(e) {
+                                    try { anchor.scrollIntoView(true); } catch(err) {}
+                                }
+                            }
+
+                            try {
+                                pWin.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                            } catch(e) {
+                                try { pWin.scrollTo(0, 0); } catch(err) {}
+                            }
+
+                            try {
+                                if (pDoc.activeElement && (pDoc.activeElement.tagName === 'BUTTON' || pDoc.activeElement.getAttribute('role') === 'button')) {
+                                    pDoc.activeElement.blur();
+                                }
+                            } catch(e) {}
+                        },
+
+                        trigger: function(durationMs) {
+                            var dur = durationMs || 2500;
+                            this.active = true;
+                            this.navStartTime = Date.now();
+                            pWin._stNeedsScrollTop = true;
+                            this.deadline = Date.now() + dur;
+                            this.resetAll();
+
+                            var self = this;
+                            var ticks = [10, 25, 50, 80, 120, 180, 250, 350, 500, 700, 950, 1250, 1600, 2000, 2400];
+                            for (var i = 0; i < ticks.length; i++) {
+                                (function(delay) {
+                                    pWin.setTimeout(function() {
+                                        if (self.active && Date.now() <= self.deadline) {
+                                            self.resetAll();
+                                        }
+                                    }, delay);
+                                })(ticks[i]);
+                            }
+
+                            if (this.rafId) {
+                                pWin.cancelAnimationFrame(this.rafId);
+                            }
+                            function onFrame() {
+                                if (self.active && Date.now() <= self.deadline) {
+                                    self.resetAll();
+                                    self.rafId = pWin.requestAnimationFrame(onFrame);
+                                } else {
+                                    self.active = false;
+                                    pWin._stNeedsScrollTop = false;
+                                }
+                            }
+                            this.rafId = pWin.requestAnimationFrame(onFrame);
+                        },
+
+                        disarm: function() {
+                            this.active = false;
+                            pWin._stNeedsScrollTop = false;
+                            if (this.rafId) {
+                                pWin.cancelAnimationFrame(this.rafId);
+                                this.rafId = null;
+                            }
+                        }
+                    };
+
+                    var engine = pWin.__interviewSenseScrollEngine;
+
+                    // 1. Permanent capture listener for all navigation clicks
+                    pDoc.addEventListener('click', function(e) {
+                        // Tab clicks in st.tabs
+                        var tab = e.target.closest('[role="tab"]') ||
+                                  e.target.closest('[data-baseweb="tab"]') ||
+                                  e.target.closest('button[data-baseweb="tab"]');
+                        if (tab) {
+                            engine.trigger(1600);
+                            return;
+                        }
+
+                        // Radio navigation clicks in navbar
+                        var radio = e.target.closest('div[data-testid="stRadio"] div[role="radio"]') ||
+                                    e.target.closest('div[data-testid="stRadio"] label');
+                        if (radio) {
+                            engine.trigger(2000);
+                            return;
+                        }
+
+                        // Button clicks
+                        var btn = e.target.closest('button') ||
+                                  e.target.closest('[role="button"]') ||
+                                  e.target.closest('input[type="submit"]');
+                        if (btn) {
+                            var txt = (btn.innerText || btn.textContent || '').trim();
+                            // Ignore non-navigational helper buttons
+                            if (txt.includes('Select All') || txt.includes('Clear Selection') || txt.indexOf('💾 Save Q') === 0) {
+                                return;
+                            }
+                            engine.trigger(2500);
+                            return;
+                        }
+                    }, true);
+
+                    // 2. Observe DOM mutations during active navigation window
+                    var appContainer = pDoc.querySelector('[data-testid="stAppViewContainer"]') || pDoc.body;
+                    if (appContainer && pWin.MutationObserver) {
+                        var observer = new pWin.MutationObserver(function(mutations) {
+                            if (engine.active && Date.now() <= engine.deadline) {
+                                engine.resetAll();
+                            }
+                        });
+                        observer.observe(appContainer, { childList: true, subtree: true });
+                    }
+
+                    // 3. User manual scroll disarms auto-scroll, with grace period for trackpad momentum
+                    var disarmEvents = ['wheel', 'touchmove', 'keydown'];
+                    for (var d = 0; d < disarmEvents.length; d++) {
+                        pDoc.addEventListener(disarmEvents[d], function(e) {
+                            if (Date.now() - engine.navStartTime < 450) {
+                                return;
+                            }
+                            if (e.type === 'keydown') {
+                                if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].indexOf(e.key) === -1) {
+                                    return;
+                                }
+                            }
+                            engine.disarm();
+                        }, { passive: true });
+                    }
+                }
+            } catch(err) {}
+        })();
+        </script>
+        """
+        st.html(engine_script, unsafe_allow_javascript=True)
+    except Exception:
+        pass
+
 def speak_question(text):
     """
     Generates TTS audio for the given text using pyttsx3 and plays it loudly and automatically.
@@ -915,193 +1128,55 @@ def scroll_to_top():
     ensures the upcoming page opens directly from the top.
     """
     try:
-        import streamlit.components.v1 as components
         import uuid
-        call_id = uuid.uuid4().hex
-        js_code = "<!-- scroll_reset_" + call_id + " -->\n" + """
+        call_id = uuid.uuid4().hex[:8]
+        js_code = f"""
+        <div id="st-scroll-trigger-{call_id}" style="display:none;"></div>
         <script>
-        (function() {
-            try {
-                const pWin = (window.parent && window.parent.document) ? window.parent : window;
-                const pDoc = pWin.document;
-                if (!pDoc) return;
+        (function() {{
+            try {{
+                var pWin = (window.parent && window.parent.document) ? window.parent : window;
+                var pDoc = pWin.document || document;
+                pWin._stNeedsScrollTop = true;
 
-                // 1. Singleton Scroll Engine on the top-level parent window
-                if (!pWin.__interviewSenseScrollEngine) {
-                    pWin.__interviewSenseScrollEngine = {
-                        active: false,
-                        deadline: 0,
-                        rafId: null,
-
-                        getTargets: function() {
-                            const list = [];
-                            const appView = pDoc.querySelector('[data-testid="stAppViewContainer"]');
-                            if (appView) list.push(appView);
-
-                            const stMain = pDoc.querySelector('[data-testid="stMain"]');
-                            if (stMain) list.push(stMain);
-
-                            const mainSec = pDoc.querySelector('section.main') || pDoc.querySelector('.main');
-                            if (mainSec) list.push(mainSec);
-
-                            const blockContainer = pDoc.querySelector('[data-testid="block-container"]') || pDoc.querySelector('.block-container');
-                            if (blockContainer) list.push(blockContainer);
-
-                            const stApp = pDoc.querySelector('[data-testid="stApp"]');
-                            if (stApp) list.push(stApp);
-
-                            if (pDoc.documentElement) list.push(pDoc.documentElement);
-                            if (pDoc.body) list.push(pDoc.body);
-                            return list;
-                        },
-
-                        resetAll: function() {
-                            const targets = this.getTargets();
-                            for (let i = 0; i < targets.length; i++) {
-                                const el = targets[i];
-                                if (el) {
-                                    if (el.scrollTop !== 0) el.scrollTop = 0;
-                                    if (el.scrollLeft !== 0) el.scrollLeft = 0;
-                                    if (typeof el.scrollTo === 'function') {
-                                        try {
-                                            el.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-                                        } catch(e) {
-                                            try { el.scrollTo(0, 0); } catch(err) {}
-                                        }
-                                    }
-                                }
-                            }
-
-                            const anchor = pDoc.getElementById('top-anchor');
-                            if (anchor && typeof anchor.scrollIntoView === 'function') {
-                                try {
-                                    anchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-                                } catch(e) {
-                                    try { anchor.scrollIntoView(true); } catch(err) {}
-                                }
-                            }
-
-                            try {
-                                pWin.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-                            } catch(e) {
-                                try { pWin.scrollTo(0, 0); } catch(err) {}
-                            }
-                        },
-
-                        trigger: function(durationMs) {
-                            const dur = durationMs || 1600;
-                            this.active = true;
-                            pWin._stNeedsScrollTop = true;
-                            this.deadline = Date.now() + dur;
-                            this.resetAll();
-
-                            const self = this;
-                            // Staggered ticks matching Streamlit React hydration phases
-                            const ticks = [10, 30, 60, 100, 180, 280, 420, 600, 850, 1150, 1500];
-                            ticks.forEach(function(delay) {
-                                pWin.setTimeout(function() {
-                                    if (self.active && Date.now() <= self.deadline) {
-                                        self.resetAll();
-                                    }
-                                }, delay);
-                            });
-
-                            if (this.rafId) {
-                                pWin.cancelAnimationFrame(this.rafId);
-                            }
-                            function onFrame() {
-                                if (self.active && Date.now() <= self.deadline) {
-                                    self.resetAll();
-                                    self.rafId = pWin.requestAnimationFrame(onFrame);
-                                } else {
-                                    self.active = false;
-                                    pWin._stNeedsScrollTop = false;
-                                }
-                            }
-                            this.rafId = pWin.requestAnimationFrame(onFrame);
-                        },
-
-                        disarm: function() {
-                            this.active = false;
-                            pWin._stNeedsScrollTop = false;
-                            if (this.rafId) {
-                                pWin.cancelAnimationFrame(this.rafId);
-                                this.rafId = null;
-                            }
-                        }
-                    };
-
-                    const engine = pWin.__interviewSenseScrollEngine;
-
-                    // 1. Intercept user click events on navigation elements
-                    pDoc.addEventListener('click', function(e) {
-                        // Tab clicks in st.tabs
-                        const tab = e.target.closest('[role="tab"]') ||
-                                    e.target.closest('[data-baseweb="tab"]') ||
-                                    e.target.closest('button[data-baseweb="tab"]');
-                        if (tab) {
-                            engine.trigger(1200);
-                            return;
-                        }
-
-                        // Radio navigation clicks in navbar
-                        const radio = e.target.closest('div[data-testid="stRadio"] div[role="radio"]') ||
-                                      e.target.closest('div[data-testid="stRadio"] label');
-                        if (radio) {
-                            engine.trigger(1600);
-                            return;
-                        }
-
-                        // Button clicks
-                        const btn = e.target.closest('button') ||
-                                    e.target.closest('[role="button"]') ||
-                                    e.target.closest('input[type="submit"]');
-                        if (btn) {
-                            const txt = (btn.innerText || btn.textContent || '').trim();
-                            // Ignore non-navigational helper buttons
-                            if (txt.includes('Select All') || txt.includes('Clear Selection') || txt.startsWith('💾 Save Q')) {
-                                return;
-                            }
-                            engine.trigger(1600);
-                            return;
-                        }
-                    }, true);
-
-                    // 2. Observe DOM mutations during active navigation window
-                    const appContainer = pDoc.querySelector('[data-testid="stAppViewContainer"]') || pDoc.body;
-                    if (appContainer && pWin.MutationObserver) {
-                        const observer = new pWin.MutationObserver(function() {
-                            if (engine.active && Date.now() <= engine.deadline) {
-                                engine.resetAll();
-                            }
-                        });
-                        observer.observe(appContainer, { childList: true, subtree: true });
-                    }
-
-                    // 3. User manual scroll disarms auto-scroll so we don't fight user interaction
-                    ['wheel', 'touchmove', 'keydown'].forEach(function(evt) {
-                        pDoc.addEventListener(evt, function(e) {
-                            if (evt === 'keydown') {
-                                if (!['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(e.key)) {
-                                    return;
-                                }
-                            }
-                            engine.disarm();
-                        }, { passive: true });
-                    });
-                }
-
-                // Trigger immediate reset for this invocation
-                if (pWin.__interviewSenseScrollEngine) {
-                    pWin.__interviewSenseScrollEngine.trigger(1600);
-                }
-            } catch(err) {
-                console.warn('[InterviewSense Scroll] Handled:', err);
-            }
-        })();
+                if (pWin.__interviewSenseScrollEngine) {{
+                    pWin.__interviewSenseScrollEngine.trigger(2500);
+                }} else {{
+                    var targets = [
+                        pDoc.querySelector('[data-testid="stAppViewContainer"]'),
+                        pDoc.querySelector('[data-testid="stMain"]'),
+                        pDoc.querySelector('[data-testid="stAppScrollToBottomContainer"]'),
+                        pDoc.querySelector('[data-testid="stMainBlockContainer"]'),
+                        pDoc.querySelector('.stMain'),
+                        pDoc.querySelector('.main'),
+                        pDoc.querySelector('section.main'),
+                        pDoc.querySelector('section.stMain'),
+                        pDoc.querySelector('.main .block-container'),
+                        pDoc.querySelector('[data-testid="stApp"]'),
+                        pDoc.documentElement,
+                        pDoc.body
+                    ];
+                    for (var i = 0; i < targets.length; i++) {{
+                        var el = targets[i];
+                        if (el) {{
+                            el.scrollTop = 0;
+                            el.scrollLeft = 0;
+                            if (typeof el.scrollTo === 'function') {{
+                                try {{ el.scrollTo({{ top: 0, left: 0, behavior: 'instant' }}); }} catch(e) {{ el.scrollTo(0, 0); }}
+                            }}
+                        }}
+                    }}
+                    var anchor = pDoc.getElementById('top-anchor');
+                    if (anchor && typeof anchor.scrollIntoView === 'function') {{
+                        try {{ anchor.scrollIntoView({{ behavior: 'instant', block: 'start' }}); }} catch(e) {{ anchor.scrollIntoView(true); }}
+                    }}
+                    pWin.scrollTo({{ top: 0, left: 0, behavior: 'instant' }});
+                }}
+            }} catch(err) {{}}
+        }})();
         </script>
         """
-        components.html(js_code, height=0, width=0, key=f"st_scroll_{call_id}")
+        st.html(js_code, unsafe_allow_javascript=True)
     except Exception:
         pass
 

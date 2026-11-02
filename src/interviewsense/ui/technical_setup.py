@@ -54,6 +54,7 @@ def render_technical_setup_page():
         return
 
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    scroll_to_top()
 
     # Navigation buttons
     col_nav1, col_nav2, _ = st.columns([1.2, 1.2, 3])

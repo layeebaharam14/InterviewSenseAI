@@ -51,6 +51,7 @@ from src.interviewsense.core.app_helpers import (
 def render_technical_submission_page():
     """Renders the Step 4 Technical Interview Submission Summary and Candidate Answer Review Page."""
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
+    scroll_to_top()
     st.markdown('<div class="page-section" style="padding-top: 1rem;">', unsafe_allow_html=True)
     
     st.title("🎉 Technical Interview Submitted!")
@@ -216,4 +217,5 @@ def render_technical_submission_page():
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
+    scroll_to_top()
 
