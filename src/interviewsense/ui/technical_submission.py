@@ -202,14 +202,17 @@ def render_technical_submission_page():
     with col_a1:
         if st.button("Continue to Analysis →", key="btn_goto_analysis", type="primary", use_container_width=True):
             st.session_state.current_page = 'technical_results'
+            scroll_to_top()
             st.rerun()
     with col_a2:
         if st.button("Practice Another Topic", key="btn_new_tech_setup_sub", type="secondary", use_container_width=True):
             st.session_state.current_page = 'technical_setup'
+            scroll_to_top()
             st.rerun()
     with col_a3:
         if st.button("Mode Selection", key="btn_return_mode_sub", type="secondary", use_container_width=True):
             st.session_state.current_page = 'mode_selection'
+            scroll_to_top()
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)

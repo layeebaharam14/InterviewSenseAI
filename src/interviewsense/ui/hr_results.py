@@ -102,5 +102,6 @@ def render_results_page():
     if st.button("Restart Interview", type="primary", use_container_width=True):
         st.session_state.current_page = 'landing'
         st.session_state.current_tab = 'Home'
+        scroll_to_top()
         st.rerun()
 

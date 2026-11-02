@@ -104,6 +104,7 @@ def render_technical_results_page():
     with col_t1:
         if st.button("← Submission Summary", key="btn_back_to_sub_top", type="secondary"):
             st.session_state.current_page = 'technical_submission'
+            scroll_to_top()
             st.rerun()
             return
 
@@ -765,12 +766,14 @@ def render_technical_results_page():
                 ]):
                     del st.session_state[k]
             st.session_state.current_page = 'technical_setup'
+            scroll_to_top()
             st.rerun()
 
     with col_nav2:
         if st.button("🏠 Back to Home", key="btn_back_to_home_from_results", type="secondary", use_container_width=True):
             st.session_state.current_page = 'landing'
             st.session_state.current_tab = 'Home'
+            scroll_to_top()
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)

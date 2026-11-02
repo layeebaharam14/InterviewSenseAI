@@ -64,6 +64,9 @@ def main():
         st.session_state.get('technical_question_index', 0),
         st.session_state.get('question_index', 0),
         st.session_state.get('technical_hardware_verified', False),
+        st.session_state.get('hardware_verified', False),
+        st.session_state.get('technical_evaluation_completed', False),
+        st.session_state.get('_force_scroll', 0),
     )
     if st.session_state.get('_last_nav_position') != nav_key:
         st.session_state['_last_nav_position'] = nav_key

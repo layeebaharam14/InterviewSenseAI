@@ -141,6 +141,7 @@ def render_technical_interview_page():
         if st.button("← Setup Page", key="back_to_setup_from_interview", type="secondary"):
             save_current_technical_answer(curr_idx)
             st.session_state.current_page = 'technical_setup'
+            scroll_to_top()
             st.rerun()
             return
     with col_t2:

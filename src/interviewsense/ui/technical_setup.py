@@ -60,12 +60,14 @@ def render_technical_setup_page():
     with col_nav1:
         if st.button("← Back to Modes", key="back_to_modes_btn", type="secondary"):
             st.session_state.current_page = 'mode_selection'
+            scroll_to_top()
             st.rerun()
             return
     with col_nav2:
         if st.button("🏠 Back to Home", key="back_to_home_from_setup", type="secondary"):
             st.session_state.current_page = 'landing'
             st.session_state.current_tab = 'Home'
+            scroll_to_top()
             st.rerun()
             return
 

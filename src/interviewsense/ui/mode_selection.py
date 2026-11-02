@@ -65,6 +65,7 @@ def start_mock_interview():
     st.session_state.analysis_done = False
     st.session_state.hardware_verified = False
     st.session_state.frames = []
+    scroll_to_top()
     st.rerun()
 
 
@@ -77,6 +78,7 @@ def render_mode_selection_page():
         if st.button("← Back to Home", key="back_to_home_mode", type="secondary"):
             st.session_state.current_page = 'landing'
             st.session_state.current_tab = 'Home'
+            scroll_to_top()
             st.rerun()
             return
 
@@ -204,6 +206,7 @@ def render_mode_selection_page():
         """, unsafe_allow_html=True)
         if st.button("Start Technical Interview", key="btn_start_tech", type="primary", use_container_width=True):
             st.session_state.current_page = 'technical_setup'
+            scroll_to_top()
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)

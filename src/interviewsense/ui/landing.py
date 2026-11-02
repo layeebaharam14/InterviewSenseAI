@@ -188,6 +188,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-home_hero),
             
             if st.button("Start Interview", type="primary", use_container_width=True):
                 st.session_state.current_page = 'mode_selection'
+                scroll_to_top()
                 st.rerun()
 
     elif st.session_state.current_tab == "About":

@@ -53,6 +53,7 @@ def render_interview_page():
     if st.button("← Go to Home", type="secondary"):
         st.session_state.current_page = 'landing'
         st.session_state.current_tab = 'Home'
+        scroll_to_top()
         st.rerun()
         return
 
@@ -62,6 +63,7 @@ def render_interview_page():
     # If we have reached the end of the questions
     if st.session_state.question_index >= len(st.session_state.current_questions):
         st.session_state.current_page = 'results'
+        scroll_to_top()
         st.rerun()
         return
 
@@ -125,12 +127,14 @@ def render_interview_page():
             with col_hw2:
                 if st.button("Continue in Demo / Simulation Mode", key="btn_bypass_hw_acc", type="secondary", use_container_width=True):
                     st.session_state.hardware_verified = True
+                    scroll_to_top()
                     st.rerun()
             return # Halt rendering until fixed
             
         st.success("✅ Camera & Microphone Ready!")
         time.sleep(1.5)
         st.session_state.hardware_verified = True
+        scroll_to_top()
         st.rerun() # Rerun to cleanly start the question
         return
 
@@ -258,6 +262,7 @@ def render_interview_page():
                 st.session_state.is_recording = False
                 st.session_state.analysis_done = False
                 st.session_state.frames = []
+                scroll_to_top()
                 st.rerun()
         else:
             # Auto-transition to next question
@@ -268,5 +273,6 @@ def render_interview_page():
             st.session_state.is_recording = False
             st.session_state.analysis_done = False
             st.session_state.frames = []
+            scroll_to_top()
             st.rerun()
 
