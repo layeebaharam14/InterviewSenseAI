@@ -732,7 +732,10 @@ def render_technical_results_page():
             st.session_state.technical_performance_level = "Needs Improvement"
             st.session_state.technical_evaluation_completed = False
             for k in list(st.session_state.keys()):
-                if k.startswith("tech_ans_input_") or k.startswith("voice_dur_"):
+                if any(k.startswith(prefix) for prefix in [
+                    "tech_ans_input_", "voice_dur_", "tech_spoken_",
+                    "tech_countdown_done_", "sub_edit_ans_", "text_area_q_"
+                ]):
                     del st.session_state[k]
             st.session_state.current_page = 'technical_setup'
             st.rerun()

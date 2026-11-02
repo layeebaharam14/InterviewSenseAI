@@ -187,10 +187,13 @@ def render_technical_submission_page():
 
             # Live synchronization so unclicked changes before submit are also caught
             if edited_val.strip() != ans_text:
-                ans_entry["answer_text"] = edited_val.strip()
+                clean_edited = edited_val.strip()
+                ans_entry["answer_text"] = clean_edited
                 ans_entry["answer_method"] = "edited"
                 st.session_state.technical_answers[i] = ans_entry
-                st.session_state[f"tech_ans_input_{i}"] = edited_val.strip()
+                st.session_state[f"tech_ans_input_{i}"] = clean_edited
+                if clean_edited:
+                    st.session_state.technical_audio_results[i] = analyze_audio_behavior(clean_edited, 15)
 
     st.write("---")
 

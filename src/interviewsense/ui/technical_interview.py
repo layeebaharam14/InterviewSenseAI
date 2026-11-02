@@ -317,13 +317,16 @@ def render_technical_interview_page():
         if camera is not None:
             ret, frame = camera.read()
             if not ret:
-                break
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            camera_placeholder.image(rgb_frame, channels="RGB", use_container_width=True)
+                camera.release()
+                camera = None
+                camera_placeholder.warning("⚠️ Webcam feed interrupted. Continuing to record audio response...")
+            else:
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                camera_placeholder.image(rgb_frame, channels="RGB", use_container_width=True)
 
-            # Sample 1 frame per second for MediaPipe facial & behavioral analysis
-            if int(elapsed) >= len(sampled_frames):
-                sampled_frames.append(rgb_frame)
+                # Sample 1 frame per second for MediaPipe facial & behavioral analysis
+                if int(elapsed) >= len(sampled_frames):
+                    sampled_frames.append(rgb_frame)
 
         # Update countdown display (15 down to 0)
         timer_color = "#4ade80" if remaining > 7 else ("#facc15" if remaining > 3 else "#ef4444")
