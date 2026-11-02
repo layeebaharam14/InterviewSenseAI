@@ -8,7 +8,7 @@ import re
 import uuid
 from datetime import datetime
 
-from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question
+from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question, render_html
 from src.interviewsense.analysis.video_analysis import (
     aggregate_video_analysis,
     analyze_technical_question_frames,
@@ -145,7 +145,7 @@ def render_technical_interview_page():
             st.rerun()
             return
     with col_t2:
-        st.markdown(f"""
+        render_html(f"""
         <div style="text-align: right; padding-top: 6px;">
             <span style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.35); padding: 5px 12px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; margin-right: 8px;">
                 ✅ Answered: {answered_count}/{total_q}
@@ -154,7 +154,7 @@ def render_technical_interview_page():
                 ⏳ Unanswered: {unanswered_count}
             </span>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
     st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
     
@@ -168,7 +168,7 @@ def render_technical_interview_page():
     st.progress(curr_q_num / total_q)
 
     # Scoped styling
-    st.markdown("""
+    render_html("""
     <style>
     .tech-question-card {
         background: linear-gradient(145deg, #0b1120, #0f172a);
@@ -204,7 +204,7 @@ def render_technical_interview_page():
         text-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
     }
     </style>
-    """, unsafe_allow_html=True)
+    """)
 
     # Question metadata & Text
     q_domain = curr_q_data.get("domain", st.session_state.technical_domain)
@@ -213,7 +213,7 @@ def render_technical_interview_page():
     q_type = curr_q_data.get("question_type", "Conceptual")
     q_text = curr_q_data.get("question", "")
 
-    st.markdown(f"""
+    render_html(f"""
     <div class="tech-question-card">
         <div>
             <span class="meta-tag meta-tag-domain">{q_domain}</span>
@@ -226,7 +226,7 @@ def render_technical_interview_page():
             Q{curr_q_num}: {q_text}
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     # =========================================================================
     # STAGE 1: DISPLAY QUESTION & SPEAK AUDIO COMPLETELY
@@ -280,12 +280,12 @@ def render_technical_interview_page():
     # =========================================================================
     # STAGE 3 & 4: AUTOMATIC CAMERA & MICROPHONE ACTIVATION (FIXED 15s TIMER)
     # =========================================================================
-    st.markdown("""
+    render_html("""
     <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px;">
         <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px #ef4444;"></span>
         <span style="color: #ef4444; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px;">🔴 LIVE RECORDING IN PROGRESS — 15 SECONDS</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     camera_placeholder = st.empty()
     timer_placeholder = st.empty()

@@ -979,3 +979,23 @@ def scroll_to_top():
         components.html(js_code, height=0, width=0, key=f"st_scroll_{call_id}")
     except Exception:
         pass
+
+
+def clean_html(html_str: str) -> str:
+    """
+    Cleans multiline HTML strings so they never trigger CommonMark indented code blocks
+    (<pre><code>) when passed to st.markdown(..., unsafe_allow_html=True).
+    Strips leading and trailing whitespace from each line and removes empty lines.
+    """
+    if not html_str:
+        return ""
+    lines = [line.strip() for line in str(html_str).strip().splitlines() if line.strip()]
+    return "\n".join(lines)
+
+
+def render_html(html_str: str):
+    """
+    Safely renders HTML via st.markdown(..., unsafe_allow_html=True), ensuring that
+    CommonMark treats it purely as HTML rather than an indented code block.
+    """
+    st.markdown(clean_html(html_str), unsafe_allow_html=True)

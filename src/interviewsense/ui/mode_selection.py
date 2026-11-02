@@ -9,7 +9,7 @@ import re
 import uuid
 from datetime import datetime
 
-from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question
+from src.interviewsense.utils.styling import scroll_to_top, apply_css, render_html, speak_question
 from src.interviewsense.analysis.video_analysis import (
     aggregate_video_analysis,
     analyze_technical_question_frames,

@@ -8,7 +8,8 @@ import re
 import uuid
 from datetime import datetime
 
-from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question
+import html
+from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question, render_html, clean_html
 from src.interviewsense.analysis.video_analysis import (
     aggregate_video_analysis,
     analyze_technical_question_frames,
@@ -119,7 +120,7 @@ def render_technical_results_page():
     # SECTION A: INTERVIEW OVERVIEW & OVERALL SCORECARDS
     # -------------------------------------------------------------------------
     skills_chips_html = "".join([f'<span class="skill-chip">{s}</span>' for s in st.session_state.technical_skills])
-    st.markdown(f"""
+    render_html(f"""
     <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 18px 22px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);">
         <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 12px;">
             <div>
@@ -145,13 +146,13 @@ def render_technical_results_page():
             <div style="margin-top: 4px;">{skills_chips_html if skills_chips_html else '<span style="color:#cbd5e1;">General Technical Domain</span>'}</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     # Circular Score Radial Visualization
     dash_circumference = 314 # 2 * pi * r (r=50)
     dash_offset = dash_circumference - (dash_circumference * (overall_sc / 100.0))
 
-    st.markdown(f"""
+    render_html(f"""
     <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 20px; padding: 22px 24px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5); max-width: 860px; margin: 0.5rem auto 1.5rem auto;">
         <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-around; gap: 20px;">
             <!-- Circular Score Gauge -->
@@ -195,7 +196,7 @@ def render_technical_results_page():
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     # -------------------------------------------------------------------------
     # TABBED ANALYTICS DASHBOARD
@@ -225,38 +226,46 @@ def render_technical_results_page():
 
         col_st1, col_st2 = st.columns(2)
         with col_st1:
-            st.markdown("""
+            tech_s_items = "".join([f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>✅ {s}</div>" for s in combined_summary.get("technical_strengths", [])])
+            if not tech_s_items:
+                tech_s_items = "<div style='color: #94a3b8; font-size: 0.85rem;'>Focus on practicing core concepts to build key strengths.</div>"
+            render_html(f"""
             <div style="background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 18px; margin-bottom: 16px;">
                 <div style="color: #4ade80; font-weight: 700; font-size: 1rem; margin-bottom: 8px;">💪 Technical Strengths</div>
-            """, unsafe_allow_html=True)
-            for s in combined_summary.get("technical_strengths", []):
-                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>✅ {s}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {tech_s_items}
+            </div>
+            """)
 
-            st.markdown("""
+            comm_s_items = "".join([f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>💬 {cs}</div>" for cs in combined_summary.get("communication_strengths", [])])
+            if not comm_s_items:
+                comm_s_items = "<div style='color: #94a3b8; font-size: 0.85rem;'>Keep speaking clearly and at a steady pace.</div>"
+            render_html(f"""
             <div style="background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 18px;">
                 <div style="color: #38bdf8; font-weight: 700; font-size: 1rem; margin-bottom: 8px;">🎙️ Communication Strengths</div>
-            """, unsafe_allow_html=True)
-            for cs in combined_summary.get("communication_strengths", []):
-                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>💬 {cs}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {comm_s_items}
+            </div>
+            """)
 
         with col_st2:
-            st.markdown("""
+            weak_t_items = "".join([f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>🎯 {w}</div>" for w in combined_summary.get("weak_technical_areas", [])])
+            if not weak_t_items:
+                weak_t_items = "<div style='color: #94a3b8; font-size: 0.85rem;'>No major technical weaknesses detected!</div>"
+            render_html(f"""
             <div style="background: rgba(251, 146, 60, 0.06); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 12px; padding: 18px; margin-bottom: 16px;">
                 <div style="color: #fb923c; font-weight: 700; font-size: 1rem; margin-bottom: 8px;">⚠️ Weak Technical Areas</div>
-            """, unsafe_allow_html=True)
-            for w in combined_summary.get("weak_technical_areas", []):
-                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>🎯 {w}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {weak_t_items}
+            </div>
+            """)
 
-            st.markdown("""
+            comm_i_items = "".join([f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>💡 {ci}</div>" for ci in combined_summary.get("communication_improvements", [])])
+            if not comm_i_items:
+                comm_i_items = "<div style='color: #94a3b8; font-size: 0.85rem;'>Communication was clear and fluent throughout.</div>"
+            render_html(f"""
             <div style="background: rgba(192, 132, 252, 0.06); border: 1px solid rgba(192, 132, 252, 0.3); border-radius: 12px; padding: 18px;">
                 <div style="color: #c084fc; font-weight: 700; font-size: 1rem; margin-bottom: 8px;">🗣️ Communication Focus Areas</div>
-            """, unsafe_allow_html=True)
-            for ci in combined_summary.get("communication_improvements", []):
-                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>💡 {ci}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {comm_i_items}
+            </div>
+            """)
 
         # Topics to Revise Box
         st.write("---")
@@ -267,11 +276,11 @@ def render_technical_results_page():
             for idx, top in enumerate(topics[:6]):
                 target_col = t_cols[idx % min(len(topics), 3)]
                 with target_col:
-                    st.markdown(f"""
+                    render_html(f"""
                     <div style="background: rgba(15, 23, 42, 0.7); border-left: 3px solid #38bdf8; border-radius: 6px; padding: 10px 14px; margin-bottom: 10px;">
                         <span style="color: #7dd3fc; font-size: 0.88rem; font-weight: 600;">{top}</span>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
 
         # Personalised Improvement Roadmap Section
         st.write("---")
@@ -281,54 +290,57 @@ def render_technical_results_page():
         tier_cols = st.columns(3)
         # High Priority
         with tier_cols[0]:
-            st.markdown("""
+            high_items = "".join([
+                f'''<div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                    <div style="color: #ffffff; font-weight: 600; font-size: 0.85rem;">{item.get('title')}</div>
+                    <div style="color: #cbd5e1; font-size: 0.8rem; margin: 4px 0;">{item.get('description')}</div>
+                    <div style="color: #38bdf8; font-size: 0.78rem; font-weight: 600;">→ Action: {item.get('action')}</div>
+                </div>'''
+                for item in roadmap.get("high_priority", [])
+            ])
+            render_html(f"""
             <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; height: 100%;">
                 <div style="color: #f87171; font-weight: 700; font-size: 0.95rem; margin-bottom: 8px;">🔴 HIGH PRIORITY</div>
                 <div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 12px;">Immediate concept and skipped topic revision</div>
-            """, unsafe_allow_html=True)
-            for item in roadmap.get("high_priority", []):
-                st.markdown(f"""
-                <div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
-                    <div style="color: #ffffff; font-weight: 600; font-size: 0.85rem;">{item.get('title')}</div>
-                    <div style="color: #cbd5e1; font-size: 0.8rem; margin: 4px 0;">{item.get('description')}</div>
-                    <div style="color: #38bdf8; font-size: 0.78rem; font-weight: 600;">→ Action: {item.get('action')}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {high_items}
+            </div>
+            """)
 
         # Medium Priority
         with tier_cols[1]:
-            st.markdown("""
+            med_items = "".join([
+                f'''<div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                    <div style="color: #ffffff; font-weight: 600; font-size: 0.85rem;">{item.get('title')}</div>
+                    <div style="color: #cbd5e1; font-size: 0.8rem; margin: 4px 0;">{item.get('description')}</div>
+                    <div style="color: #38bdf8; font-size: 0.78rem; font-weight: 600;">→ Action: {item.get('action')}</div>
+                </div>'''
+                for item in roadmap.get("medium_priority", [])
+            ])
+            render_html(f"""
             <div style="background: rgba(251, 146, 60, 0.08); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 12px; padding: 16px; height: 100%;">
                 <div style="color: #fb923c; font-weight: 700; font-size: 0.95rem; margin-bottom: 8px;">🟡 MEDIUM PRIORITY</div>
                 <div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 12px;">Technical depth, edge cases & pacing calibration</div>
-            """, unsafe_allow_html=True)
-            for item in roadmap.get("medium_priority", []):
-                st.markdown(f"""
-                <div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
-                    <div style="color: #ffffff; font-weight: 600; font-size: 0.85rem;">{item.get('title')}</div>
-                    <div style="color: #cbd5e1; font-size: 0.8rem; margin: 4px 0;">{item.get('description')}</div>
-                    <div style="color: #38bdf8; font-size: 0.78rem; font-weight: 600;">→ Action: {item.get('action')}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {med_items}
+            </div>
+            """)
 
         # Further Practice
         with tier_cols[2]:
-            st.markdown("""
-            <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 16px; height: 100%;">
-                <div style="color: #4ade80; font-weight: 700; font-size: 0.95rem; margin-bottom: 8px;">🟢 FURTHER PRACTICE</div>
-                <div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 12px;">Long-term architectural mastery & simulation</div>
-            """, unsafe_allow_html=True)
-            for item in roadmap.get("further_practice", []):
-                st.markdown(f"""
-                <div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+            fp_items = "".join([
+                f'''<div style="background: rgba(15, 23, 42, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
                     <div style="color: #ffffff; font-weight: 600; font-size: 0.85rem;">{item.get('title')}</div>
                     <div style="color: #cbd5e1; font-size: 0.8rem; margin: 4px 0;">{item.get('description')}</div>
                     <div style="color: #38bdf8; font-size: 0.78rem; font-weight: 600;">→ Action: {item.get('action')}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                </div>'''
+                for item in roadmap.get("further_practice", [])
+            ])
+            render_html(f"""
+            <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 16px; height: 100%;">
+                <div style="color: #4ade80; font-weight: 700; font-size: 0.95rem; margin-bottom: 8px;">🟢 FURTHER PRACTICE</div>
+                <div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 12px;">Long-term architectural mastery & simulation</div>
+                {fp_items}
+            </div>
+            """)
 
     # -------------------------------------------------------------------------
     # TAB 2: TECHNICAL PERFORMANCE BREAKDOWN
@@ -350,7 +362,7 @@ def render_technical_results_page():
 
             for c_label, c_val, c_max, c_color in criteria_list:
                 pct = int((c_val / c_max) * 100) if c_max > 0 else 0
-                st.markdown(f"""
+                render_html(f"""
                 <div style="margin-bottom: 10px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 14px;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">
                         <span style="color: #ffffff;">{c_label}</span>
@@ -360,7 +372,7 @@ def render_technical_results_page():
                         <div style="background: {c_color}; width: {pct}%; height: 100%; border-radius: 4px;"></div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
             # Criteria Chart
             crit_chart_data = {
@@ -382,7 +394,7 @@ def render_technical_results_page():
                 for sk_name, sk_score in skill_avgs.items():
                     sk_lvl = classify_performance(sk_score)
                     sk_col = "#4ade80" if sk_score >= 75 else "#facc15" if sk_score >= 60 else "#fb923c" if sk_score >= 40 else "#f87171"
-                    st.markdown(f"""
+                    render_html(f"""
                     <div style="margin-bottom: 10px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 14px;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">
                             <span style="color: #ffffff;">{sk_name}</span>
@@ -392,7 +404,7 @@ def render_technical_results_page():
                             <div style="background: {sk_col}; width: {min(100, int(sk_score))}%; height: 100%; border-radius: 4px;"></div>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
                 
                 try:
                     import pandas as pd
@@ -449,7 +461,7 @@ def render_technical_results_page():
             st.metric("Articulation Score", f"{avg_fluency} / 100")
 
         # Metric explanations in simple language
-        st.markdown(f"""
+        render_html(f"""
         <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 16px 20px; margin-top: 14px;">
             <div style="color: #38bdf8; font-weight: 700; font-size: 0.95rem; margin-bottom: 8px;">💡 How to Interpret Your Speech Metrics:</div>
             <div style="color: #cbd5e1; font-size: 0.88rem; line-height: 1.6;">
@@ -459,7 +471,7 @@ def render_technical_results_page():
                 • <strong>Transcription Coverage:</strong> {len(valid_audios)} of {len(evals)} questions had speech successfully captured and transcribed.
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
         # Question-wise audio chart
         if audio_results:
@@ -497,22 +509,26 @@ def render_technical_results_page():
 
         col_v_obs, col_v_sugg = st.columns(2)
         with col_v_obs:
-            st.markdown("""
+            obs_items = "".join([f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>• {obs}</div>" for obs in overall_vis.get("key_observations", [])])
+            if not obs_items:
+                obs_items = "<div style='color: #94a3b8; font-size: 0.85rem;'>Maintaining natural camera presence.</div>"
+            render_html(f"""
             <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 16px; height: 100%;">
                 <div style="color: #38bdf8; font-weight: 700; margin-bottom: 10px; font-size: 0.95rem;">👁️ Visual Engagement Observations</div>
-            """, unsafe_allow_html=True)
-            for obs in overall_vis.get("key_observations", []):
-                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>• {obs}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {obs_items}
+            </div>
+            """)
 
         with col_v_sugg:
-            st.markdown("""
+            sugg_items = "".join([f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>• {sg}</div>" for sg in overall_vis.get("improvement_suggestions", [])])
+            if not sugg_items:
+                sugg_items = "<div style='color: #94a3b8; font-size: 0.85rem;'>Good framing and posture.</div>"
+            render_html(f"""
             <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 12px; padding: 16px; height: 100%;">
                 <div style="color: #c084fc; font-weight: 700; margin-bottom: 10px; font-size: 0.95rem;">📐 Framing & Pacing Suggestions</div>
-            """, unsafe_allow_html=True)
-            for sg in overall_vis.get("improvement_suggestions", []):
-                st.markdown(f"<div style='color: #e2e8f0; font-size: 0.88rem; margin-bottom: 6px;'>• {sg}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                {sugg_items}
+            </div>
+            """)
 
         # Question-wise visual table & chart
         st.write("---")
@@ -548,13 +564,13 @@ def render_technical_results_page():
             st.info("No webcam frames recorded for visual analysis in this session.")
 
         # Transparency disclaimer box
-        st.markdown(f"""
+        render_html(f"""
         <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 12px 16px; margin-top: 14px;">
             <div style="color: #94a3b8; font-size: 0.82rem; line-height: 1.5;">
                 ℹ️ <strong>Transparency Note:</strong> {overall_vis.get('disclaimer', 'Webcam eye-gaze and head-pose estimations reflect physical camera orientation. InterviewSense AI strictly avoids inferring personality, honesty, emotion, or intelligence from video recordings. Visual metrics do NOT alter technical correctness scores.')}
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
     # -------------------------------------------------------------------------
     # TAB 5: QUESTION-BY-QUESTION DETAILED EVALUATION
@@ -572,7 +588,7 @@ def render_technical_results_page():
             
             with st.expander(expander_title, expanded=(i == 0)):
                 # Metadata Tags
-                st.markdown(f"""
+                render_html(f"""
                 <div style="margin-bottom: 12px;">
                     <span class="meta-tag meta-tag-domain">{ev.get('domain', '')}</span>
                     <span class="meta-tag meta-tag-skill">{ev.get('skill', '')}</span>
@@ -582,7 +598,7 @@ def render_technical_results_page():
                         Score: {q_sc}/100
                     </span>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
                 # Multi-Modal Delivery Summary (Visual + Audio)
                 q_v_info = st.session_state.get("technical_video_results", {}).get(i, {})
@@ -592,16 +608,16 @@ def render_technical_results_page():
                 a_wpm_disp = f"{q_a_info.get('words_per_minute', 0.0)} WPM"
                 a_fil_disp = f"{q_a_info.get('filler_words', 0)} fillers"
 
-                st.markdown(f"""
+                render_html(f"""
                 <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; font-size: 0.83rem; display: flex; flex-wrap: wrap; justify-content: space-between;">
                     <span style="color: #7dd3fc;">👁️ <strong>Visual:</strong> {v_vis_disp} visibility • {v_cam_disp} camera-facing (approx.)</span>
                     <span style="color: #c084fc;">🎙️ <strong>Audio:</strong> {a_wpm_disp} • {a_fil_disp}</span>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
                 # Criteria Breakdown Grid
                 crit = ev.get("criteria_scores", {})
-                st.markdown(f"""
+                render_html(f"""
                 <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
                     <div style="color: #38bdf8; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px;">Criteria Breakdown:</div>
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; text-align: center;">
@@ -627,14 +643,24 @@ def render_technical_results_page():
                         </div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
-                # Candidate's Submitted Response
+                # Candidate's Submitted Response (Read-Only Styled Interface)
                 st.markdown("**Your Submitted Response:**")
                 if ev.get("is_unanswered"):
-                    st.warning("⚠️ *No answer was submitted for this question (Score: 0/100)*")
+                    render_html("""
+                    <div style="background: rgba(251, 146, 60, 0.08); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; color: #fb923c; font-size: 0.92rem;">
+                        ⚠️ <em>No answer was submitted for this question (Score: 0/100)</em>
+                    </div>
+                    """)
                 else:
-                    st.info(ev.get("candidate_answer", ""))
+                    ans_text_raw = ev.get("candidate_answer", "")
+                    escaped_ans = html.escape(ans_text_raw).replace("\n", "<br>")
+                    render_html(f"""
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; color: #f1f5f9; font-size: 0.92rem; line-height: 1.55;">
+                        {escaped_ans}
+                    </div>
+                    """)
 
                 # Detailed Feedback Sections
                 col_fb1, col_fb2 = st.columns(2)
@@ -658,11 +684,12 @@ def render_technical_results_page():
                 # Suggested Model Answer
                 st.write("---")
                 st.markdown("<div style='color: #7dd3fc; font-weight: 700; font-size: 0.92rem; margin-bottom: 6px;'>📘 Suggested Model Answer:</div>", unsafe_allow_html=True)
-                st.markdown(f"""
+                model_ans_escaped = html.escape(ev.get('suggested_answer', '')).replace("\n", "<br>")
+                render_html(f"""
                 <div style="background: rgba(15, 23, 42, 0.9); border-left: 4px solid #38bdf8; padding: 14px 18px; border-radius: 6px; color: #e2e8f0; font-size: 0.95rem; line-height: 1.6;">
-                    {ev.get('suggested_answer', '')}
+                    {model_ans_escaped}
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
     st.write("---")
 

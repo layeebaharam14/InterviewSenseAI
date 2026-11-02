@@ -8,7 +8,7 @@ import re
 import uuid
 from datetime import datetime
 
-from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question
+from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question, render_html
 from src.interviewsense.analysis.video_analysis import (
     aggregate_video_analysis,
     analyze_technical_question_frames,
@@ -200,14 +200,14 @@ def render_technical_setup_page():
     # Clear display of selected skills
     if st.session_state.technical_skills:
         chips_markup = "".join([f'<span class="skill-chip">{s}</span>' for s in st.session_state.technical_skills])
-        st.markdown(f"""
+        render_html(f"""
         <div class="selected-summary-box">
             <div style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; margin-bottom: 6px;">
                 ACTIVE TOPICS ({len(st.session_state.technical_skills)} SELECTED):
             </div>
             <div>{chips_markup}</div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
     else:
         st.warning("⚠️ Please select at least one skill to enable generating the technical interview.")
 

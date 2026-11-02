@@ -9,7 +9,7 @@ import re
 import uuid
 from datetime import datetime
 
-from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question
+from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question, render_html, clean_html
 from src.interviewsense.analysis.video_analysis import (
     aggregate_video_analysis,
     analyze_technical_question_frames,
@@ -69,7 +69,7 @@ def render_technical_submission_page():
     skills_badges = "".join([f'<span class="skill-chip">{s}</span>' for s in st.session_state.technical_skills])
 
     # Session Summary Card
-    st.markdown(f"""
+    render_html(f"""
     <div style="background: linear-gradient(145deg, #0b1120, #0f172a); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 20px 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45); max-width: 820px; margin: 0.8rem auto 1.2rem auto; text-align: left;">
         <div style="text-align: center; font-size: 3.2rem; margin-bottom: 8px;">📋</div>
         <h2 style="color: #38bdf8; text-align: center; margin-bottom: 6px;">Submission Summary</h2>
@@ -101,7 +101,7 @@ def render_technical_submission_page():
             <div>{skills_badges}</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     # Detailed Question and Answer Breakdown Accordion with Voice Playback & Editing
     st.subheader("🔍 Review & Refine Submitted Answers")
@@ -118,14 +118,14 @@ def render_technical_submission_page():
         
         q_title = f"{status_label} — Q{i+1}: {q_data.get('question')}"
         with st.expander(q_title, expanded=(i == 0)):
-            st.markdown(f"""
+            render_html(f"""
             <div style="margin-bottom: 8px;">
                 <span class="meta-tag meta-tag-skill">{q_data.get('skill', 'General')}</span>
                 <span class="meta-tag meta-tag-diff">{q_data.get('difficulty', st.session_state.technical_difficulty)}</span>
                 <span class="meta-tag meta-tag-type">{q_data.get('question_type', 'Conceptual')}</span>
                 <span class="meta-tag" style="background: rgba(56, 189, 248, 0.12); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.3);">👁️ Visuals: {st.session_state.technical_video_results.get(i, {}).get('face_visibility_pct', 0.0)}% visibility</span>
             </div>
-            """, unsafe_allow_html=True)
+            """)
             
             st.markdown(f"**Question:** {q_data.get('question')}")
             st.write("---")
