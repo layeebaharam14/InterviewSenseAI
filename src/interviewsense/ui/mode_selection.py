@@ -73,7 +73,10 @@ def start_mock_interview():
 def render_mode_selection_page():
     """Renders the Interview Mode Selection page with Mock and Technical interview options."""
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
-    col_back, _ = st.columns([1, 4])
+    scroll_to_top()
+    st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
+
+    col_back, col_title, _ = st.columns([1.4, 5.2, 1.4], vertical_alignment="center")
     with col_back:
         if st.button("← Back to Home", key="back_to_home_mode", type="secondary"):
             st.session_state.current_page = 'landing'
@@ -81,10 +84,8 @@ def render_mode_selection_page():
             scroll_to_top()
             st.rerun()
             return
-
-    scroll_to_top()
-    st.markdown('<div class="page-section" style="padding-top: 0.2rem;">', unsafe_allow_html=True)
-    st.title("🎯 Choose Your Interview Mode")
+    with col_title:
+        st.title("🎯 Choose Your Interview Mode")
     st.subheader("Select the type of interview you want to practice and improve your skills.")
     st.write("---")
 
