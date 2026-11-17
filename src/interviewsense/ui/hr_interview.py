@@ -51,12 +51,13 @@ def render_interview_page():
 
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     scroll_to_top()
-    if st.button("← Go to Home", type="secondary"):
-        st.session_state.current_page = 'landing'
-        st.session_state.current_tab = 'Home'
-        scroll_to_top()
-        st.rerun()
-        return
+    if not st.session_state.hardware_verified:
+        if st.button("← Go to Home", type="secondary"):
+            st.session_state.current_page = 'landing'
+            st.session_state.current_tab = 'Home'
+            scroll_to_top()
+            st.rerun()
+            return
 
     # Show Simulation Mode Badge
     st.markdown('<div style="text-align:center;"><div class="mode-badge">🔴 Real-Time Interview Simulation Mode</div></div>', unsafe_allow_html=True)
@@ -171,9 +172,17 @@ def render_interview_page():
         st.rerun()
             
     elif st.session_state.is_recording:
-        st.write("🎙️ Recording your response...")
-        camera_placeholder = st.empty()
-        timer_placeholder = st.empty()
+        col_cam_l, col_cam_c, col_cam_r = st.columns([1, 6, 1])
+        with col_cam_c:
+            status_placeholder = st.empty()
+            status_placeholder.markdown(
+                "<div style='text-align: center; color: #38bdf8; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;'>"
+                "🎙️ Recording your response..."
+                "</div>",
+                unsafe_allow_html=True
+            )
+            camera_placeholder = st.empty()
+            timer_placeholder = st.empty()
         
         record_duration = get_question_duration(current_q)
         
@@ -217,6 +226,7 @@ def render_interview_page():
             
         # Loop finished
         camera.release()
+        status_placeholder.empty()
         camera_placeholder.empty()
         timer_placeholder.empty()
         
