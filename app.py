@@ -71,25 +71,28 @@ def main():
         st.session_state['_last_nav_position'] = nav_key
         scroll_to_top()
 
-    # Router
-    page = st.session_state.current_page
+    # Page Container: Dedicated container ensuring clean DOM replacement between pages
+    page_container = st.empty()
+    with page_container.container():
+        # Router
+        page = st.session_state.current_page
 
-    if page == 'landing':
-        render_landing_page()
-    elif page == 'mode_selection':
-        render_mode_selection_page()
-    elif page == 'technical_setup':
-        render_technical_setup_page()
-    elif page == 'technical_interview':
-        render_technical_interview_page()
-    elif page in ('technical_submission', 'technical_completed'):
-        render_technical_submission_page()
-    elif page in ('technical_results', 'technical_analysis', 'technical_analysis_placeholder'):
-        render_technical_results_page()
-    elif page == 'interview':
-        render_interview_page()
-    elif page == 'results':
-        render_results_page()
+        if page == 'landing':
+            render_landing_page()
+        elif page == 'mode_selection':
+            render_mode_selection_page()
+        elif page == 'technical_setup':
+            render_technical_setup_page()
+        elif page == 'technical_interview':
+            render_technical_interview_page()
+        elif page in ('technical_submission', 'technical_completed'):
+            render_technical_submission_page()
+        elif page in ('technical_results', 'technical_analysis', 'technical_analysis_placeholder'):
+            render_technical_results_page()
+        elif page == 'interview':
+            render_interview_page()
+        elif page == 'results':
+            render_results_page()
 
 
 if __name__ == "__main__":
