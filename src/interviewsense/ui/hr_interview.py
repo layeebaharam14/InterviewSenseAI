@@ -236,18 +236,24 @@ def render_interview_page():
             transcribed_text = audio_result[0] if audio_result else ""
             
             # Check for explicitly caught errors
+            audio_pipeline_failed = False
             if transcribed_text.startswith("ERROR:"):
                 st.session_state.last_audio_error = transcribed_text
                 transcribed_text = ""
+                audio_pipeline_failed = True  # hardware/SR failure, not candidate silence
             else:
                 st.session_state.last_audio_error = None
-            
+
             # Process frames
             video_res = aggregate_video_analysis(st.session_state.frames)
             st.session_state.video_results.append(video_res)
-            
-            # Process Audio
-            audio_res = analyze_audio_behavior(transcribed_text, record_duration)
+
+            # Process Audio -- pass audio_failed so scoring skips unfair penalties
+            audio_res = analyze_audio_behavior(
+                transcribed_text,
+                record_duration,
+                audio_failed=audio_pipeline_failed,
+            )
             st.session_state.audio_results.append(audio_res)
             
         st.session_state.is_recording = False
