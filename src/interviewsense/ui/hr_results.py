@@ -1,180 +1,276 @@
+"""
+hr_results.py — InterviewSense AI
+Mock HR Interview Results Page & Performance Dashboard.
+Presents structured, professional behavioral and speech feedback with question-by-question analytics
+and multi-page PDF export.
+"""
+
 import streamlit as st
-import streamlit.components.v1 as components
-import cv2
-import time
-import threading
-import speech_recognition as sr
 import re
-import uuid
 from datetime import datetime
 
-from src.interviewsense.utils.styling import scroll_to_top, apply_css, speak_question
-from src.interviewsense.analysis.video_analysis import (
-    aggregate_video_analysis,
-    analyze_technical_question_frames,
-    calculate_overall_visual_analysis,
-)
-from src.interviewsense.analysis.audio_analysis import analyze_audio_behavior
+from src.interviewsense.utils.styling import scroll_to_top
 from src.interviewsense.core.scoring import calculate_scores
-from src.interviewsense.core.insights import generate_feedback
-from src.interviewsense.data.technical_questions import generate_technical_questions
-from src.interviewsense.analysis.technical_evaluation import (
-    evaluate_technical_interview,
-    evaluate_technical_answer,
-    classify_performance,
-    generate_combined_summary,
-    generate_improvement_roadmap,
+from src.interviewsense.core.insights import (
+    generate_feedback,
+    evaluate_mock_question,
+    generate_mock_interview_summary,
 )
-from src.interviewsense.reports.technical_report_pdf import generate_technical_pdf_report
-from src.interviewsense.services.technical_speech import (
-    normalize_technical_terms,
-    record_and_transcribe_audio,
-    transcribe_audio_file,
-    get_temp_audio_path,
-    cleanup_temp_audio,
-)
-import pandas as pd
-
-# Local helpers (shared across UI modules via app_helpers)
-from src.interviewsense.core.app_helpers import (
-    QUESTION_POOL,
-    get_question_duration,
-    get_technical_question_duration,
-    get_camera,
-    record_and_transcribe,
-    record_technical_voice_answer,
-    save_current_technical_answer,
-)
+from src.interviewsense.reports.hr_report_pdf import generate_hr_pdf_report
 
 
 def render_results_page():
-
+    """Renders the Mock HR Interview Results Dashboard with structured analytics and PDF report export."""
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     scroll_to_top()
+
     st.title("📊 Final Interview Verdict")
-    st.write("Here is the analysis of your performance based on behavioural and speech metrics.")
+    st.write("Comprehensive behavioral and speech evaluation based on your simulation performance.")
     st.write("---")
 
-    # Calculate final scores
-    scores = calculate_scores(st.session_state.video_results, st.session_state.audio_results)
+    # Retrieve session data
+    questions = st.session_state.get("current_questions", [])
+    v_results = st.session_state.get("video_results", [])
+    a_results = st.session_state.get("audio_results", [])
+    cand_name = st.session_state.get("candidate_name", "Candidate")
 
-    total_q = len(st.session_state.video_results)
-    audio_q = scores.get("audio_questions_evaluated", 0)
-    video_q = scores.get("video_questions_evaluated", 0)
+    # Calculate scores and feedback using existing core modules
+    scores = calculate_scores(v_results, a_results)
+    feedback = generate_feedback(scores)
+
+    # Assemble comprehensive evaluation summary (shared with PDF generator)
+    summary = generate_mock_interview_summary(
+        questions=questions,
+        video_results=v_results,
+        audio_results=a_results,
+        scores=scores,
+        feedback=feedback,
+        candidate_name=cand_name,
+    )
+
+    total_q = summary["total_questions"]
+    audio_q = summary["audio_questions_evaluated"]
+    video_q = summary["video_questions_evaluated"]
+    overall_score = summary["overall_score"]
+    verdict = summary["verdict"]
+    score_note = summary["score_note"]
+    coverage_status = summary["coverage_status"]
 
     # -----------------------------------------------------------------
-    # Data-availability notice — shown when audio was partially missing
+    # A. Overall Performance & Data Notice
     # -----------------------------------------------------------------
-    if audio_q < total_q and total_q > 0:
+    if total_q > 0 and audio_q < total_q:
         unavail = total_q - audio_q
         st.warning(
-            f"⚠️ **Audio note:** {unavail} of {total_q} question(s) could not be transcribed "
-            f"(microphone or network issue). Communication was evaluated from {audio_q} answer(s) only. "
+            f"⚠️ **Audio Notice:** {unavail} of {total_q} question(s) could not be transcribed "
+            f"(microphone or recognition issue). Communication was evaluated from {audio_q} answer(s) only. "
             f"Confidence and observable nervousness are still assessed from camera data."
         )
 
-    # Display Metrics
-    col1, col2, col3 = st.columns(3)
+    # Hero score and verdict row
+    col_hero1, col_hero2 = st.columns([1.2, 2.8])
+    with col_hero1:
+        st.metric("Overall Score", f"{overall_score}/100")
+    with col_hero2:
+        icon = "✅" if "Ready" in verdict and "Not" not in verdict else ("⚠️" if "Improvement" in verdict else "❌")
+        st.markdown(
+            f"### Final Verdict: <span class='{summary['verdict_class']}'>{verdict} {icon}</span>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(f"**Session Coverage:** {coverage_status} ({total_q} Questions Completed)")
+        if score_note:
+            st.caption(f"ℹ️ {score_note}")
+
+    st.write("---")
+
+    # -----------------------------------------------------------------
+    # B. Performance Metrics Breakdown
+    # -----------------------------------------------------------------
+    st.subheader("📈 Performance Metrics Breakdown")
+    col1, col2, col3, col4 = st.columns(4)
+
     with col1:
-        st.metric("Confidence Score", f"{scores['confidence']}/100")
+        conf_display = f"{summary['confidence_score']}/100" if (video_q > 0 or total_q == 0) else "N/A"
+        st.metric(
+            "Confidence Score",
+            conf_display,
+            help="Derived from camera engagement, eye gaze direction, and physical presence."
+        )
     with col2:
-        st.metric("Nervousness Index", f"{scores['nervousness']}/100")
+        st.metric(
+            "Nervousness Index",
+            f"{summary['nervousness_score']}/100",
+            help="Estimated from observable physical movement and speech pauses."
+        )
     with col3:
-        comm_label = (
-            f"{scores['communication']}/100"
-            if audio_q > 0
+        comm_display = (
+            f"{summary['communication_score']}/100"
+            if summary["communication_score"] is not None
             else "N/A (no audio)"
         )
-        st.metric("Communication Score", comm_label)
-
-    # Supplementary camera / audio coverage info
-    if total_q > 0:
-        with st.expander("📋 Evaluation Coverage Details", expanded=False):
-            st.markdown(
-                f"- **Questions recorded:** {total_q}\n"
-                f"- **Questions with face detected (camera evidence):** {video_q}/{total_q}\n"
-                f"- **Questions with transcribed audio:** {audio_q}/{total_q}"
-            )
-            if audio_q == 0:
-                st.info(
-                    "No audio was transcribed during this session. "
-                    "The Communication score is excluded from the overall verdict. "
-                    "Please check your microphone settings and try again."
-                )
+        st.metric(
+            "Communication Score",
+            comm_display,
+            help="Derived from speaking rate (WPM), speech fluency, and filler word usage."
+        )
+    with col4:
+        st.metric(
+            "Evaluation Coverage",
+            f"{audio_q}/{total_q} Audio · {video_q}/{total_q} Video",
+            help="Proportion of interview questions with complete sensor evaluation."
+        )
 
     st.write("---")
 
-    # Generate Feedback
-    feedback = generate_feedback(scores)
-
-    # score_note (e.g. if communication was excluded from average)
-    score_note = feedback.get("score_note", "")
-
-    # Display Verdict
-    icon = "✅" if "Ready" in feedback["verdict"] else ("⚠️" if "Improvement" in feedback["verdict"] else "❌")
-    st.markdown(
-        f"### Final Verdict: <span class='{feedback['verdict_class']}'>{feedback['verdict']} {icon}</span>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(f"**Overall Score:** {feedback['overall_score']}/100")
-    if score_note:
-        st.caption(f"ℹ️ {score_note}")
-
-    st.write("---")
+    # -----------------------------------------------------------------
+    # C. Executive Feedback: Strengths & Areas to Improve
+    # -----------------------------------------------------------------
     st.subheader("💡 Detailed Feedback")
-
     colA, colB, colC = st.columns(3)
 
     with colA:
         st.success("**Strengths**")
-        for item in feedback["positive"]:
+        for item in summary["strengths"]:
             st.write(f"- {item}")
 
     with colB:
         st.warning("**Areas to Improve**")
-        for item in feedback["improvement"]:
+        for item in summary["improvements"]:
             st.write(f"- {item}")
 
     with colC:
         st.error("**Critical Issues**")
-        if feedback["negative"]:
-            for item in feedback["negative"]:
+        if summary["critical_issues"]:
+            for item in summary["critical_issues"]:
                 st.write(f"- {item}")
         else:
-            st.write("- None detected. Great job!")
-
-    # -----------------------------------------------------------------
-    # Per-question audio summary (collapsed by default)
-    # -----------------------------------------------------------------
-    if st.session_state.audio_results:
-        st.write("---")
-        with st.expander("🎙️ Per-Question Audio Summary", expanded=False):
-            questions = st.session_state.get("current_questions", [])
-            for i, a_res in enumerate(st.session_state.audio_results):
-                q_label = f"Q{i + 1}"
-                if i < len(questions):
-                    q_label += f": {questions[i][:60]}{'…' if len(questions[i]) > 60 else ''}"
-                avail = a_res.get("audio_available", True)
-                if not avail:
-                    st.markdown(f"**{q_label}** — ⚠️ Audio unavailable (transcription failed)")
-                elif not a_res.get("meaningful", True):
-                    st.markdown(f"**{q_label}** — 🔇 No speech detected (silence)")
-                else:
-                    wpm = a_res.get("words_per_minute", 0)
-                    words = a_res.get("word_count", 0)
-                    rate = a_res.get("speech_rate", "—")
-                    fillers = a_res.get("filler_words", 0)
-                    transcript = a_res.get("transcribed_text", "")
-                    st.markdown(
-                        f"**{q_label}** — ✅ {words} words · {wpm} WPM · {rate} pace"
-                        + (f" · {fillers} filler word(s)" if fillers else "")
-                    )
-                    if transcript:
-                        st.caption(f'📝 "{transcript[:200]}{"…" if len(transcript) > 200 else ""}"')
+            st.write("- None detected. Great composure throughout!")
 
     st.write("---")
-    if st.button("Restart Interview", type="primary", use_container_width=True):
-        st.session_state.current_page = "landing"
-        st.session_state.current_tab = "Home"
-        scroll_to_top()
-        st.rerun()
+
+    # -----------------------------------------------------------------
+    # D. Question-by-Question Evaluation
+    # -----------------------------------------------------------------
+    st.subheader("📝 Question-by-Question Evaluation")
+    st.write("Detailed breakdown of your spoken responses, audio metrics, and visual body language for every prompt.")
+
+    q_evals = summary.get("question_evaluations", [])
+
+    if q_evals:
+        for idx, q_data in enumerate(q_evals):
+            q_num = idx + 1
+            q_title = q_data.get("question", f"Question {q_num}")
+            a_status = q_data.get("audio_status", "unavailable")
+            v_status = q_data.get("video_status", "unavailable")
+            transcript = q_data.get("transcript", "")
+
+            # Expander header icon
+            if a_status == "transcribed" and v_status == "detected":
+                status_icon = "✅"
+            elif a_status == "transcribed" or v_status == "detected":
+                status_icon = "⚠️"
+            else:
+                status_icon = "❌"
+
+            with st.expander(f"{status_icon} Question {q_num}: {q_title}", expanded=(idx == 0)):
+                # Candidate response display
+                if a_status == "transcribed":
+                    st.markdown(f"**Candidate Response:**\n> \"*{transcript}*\"")
+                elif a_status == "silent":
+                    st.info("🔇 **Candidate Response:** *No speech was detected during this recording.*")
+                else:
+                    st.warning("⚠️ **Candidate Response:** *Audio capture was unavailable due to a hardware or recognition error.*")
+
+                # Metrics row
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    st.markdown("**🎙️ Speech & Audio Telemetry:**")
+                    if a_status == "transcribed":
+                        wpm = q_data.get("words_per_minute", 0.0)
+                        words = q_data.get("word_count", 0)
+                        rate = q_data.get("speech_rate", "—")
+                        fillers = q_data.get("filler_words", 0)
+                        pauses = q_data.get("pauses", 0)
+                        st.markdown(
+                            f"- **Pace:** {wpm} WPM ({rate})\n"
+                            f"- **Word Count:** {words} words\n"
+                            f"- **Filler Words:** {fillers}\n"
+                            f"- **Estimated Pauses:** {pauses}"
+                        )
+                    elif a_status == "silent":
+                        st.markdown("- *Silence recorded (0 words spoken)*")
+                    else:
+                        st.markdown("- *Audio capture unavailable*")
+
+                with col_m2:
+                    st.markdown("**📷 Visual & Composure Telemetry:**")
+                    if v_status == "detected":
+                        gaze = str(q_data.get("eye_contact", "unavailable")).capitalize()
+                        mov = str(q_data.get("movement", "unavailable")).capitalize()
+                        pos = str(q_data.get("face_position", "unavailable")).capitalize()
+                        posture = str(q_data.get("posture", "unavailable")).capitalize()
+                        st.markdown(
+                            f"- **Eye Contact:** {gaze}\n"
+                            f"- **Composure / Movement:** {mov}\n"
+                            f"- **Framing:** {pos}\n"
+                            f"- **Posture:** {posture}"
+                        )
+                    else:
+                        st.markdown("- *Face was not clearly detected in frame*")
+
+                # Evidence-based observations
+                st.markdown("---")
+                col_fb1, col_fb2 = st.columns(2)
+                with col_fb1:
+                    st.markdown("##### 🌟 What went well")
+                    for w in q_data.get("what_went_well", []):
+                        st.markdown(f"- {w}")
+                with col_fb2:
+                    st.markdown("##### 🎯 What to improve")
+                    for imp in q_data.get("what_to_improve", []):
+                        st.markdown(f"- {imp}")
+    else:
+        st.info("No question responses were recorded during this session.")
+
+    st.write("---")
+
+    # -----------------------------------------------------------------
+    # E. Evaluation Coverage & Scientific Limitations
+    # -----------------------------------------------------------------
+    with st.expander("ℹ️ Evaluation Limitations & Methodology Disclaimers", expanded=False):
+        st.markdown(
+            "**Data Coverage & Quality Disclosures:**\n"
+            f"- **Questions recorded:** {total_q}\n"
+            f"- **Face presence verified:** {video_q}/{total_q} questions\n"
+            f"- **Speech transcribed:** {audio_q}/{total_q} questions\n\n"
+            "**Scientific & Behavioral Limitations:**\n"
+            "- **Observable signals only:** Measurements reflect webcam framing, eye gaze approximations, and speech rate. "
+            "They do not measure personality, intelligence, or internal emotional state.\n"
+            "- **Non-hallucinatory evaluation:** All metrics are calculated directly from physical sensors and speech transcripts.\n"
+            "- **Practice purpose:** This feedback is designed to build confidence and refine delivery for real-world interviews."
+        )
+
+    st.write("---")
+
+    # -----------------------------------------------------------------
+    # F. Downloadable PDF Report & Navigation
+    # -----------------------------------------------------------------
+    pdf_bytes = generate_hr_pdf_report(summary)
+    clean_date = datetime.now().strftime("%Y%m%d_%H%M")
+    pdf_filename = f"InterviewSense_Mock_Report_{clean_date}.pdf"
+
+    col_act1, col_act2 = st.columns([1, 1])
+    with col_act1:
+        st.download_button(
+            label="📄 Download Mock Interview Report (PDF)",
+            data=pdf_bytes,
+            file_name=pdf_filename,
+            mime="application/pdf",
+            use_container_width=True,
+        )
+    with col_act2:
+        if st.button("Restart Interview", type="primary", use_container_width=True):
+            st.session_state.current_page = "landing"
+            st.session_state.current_tab = "Home"
+            scroll_to_top()
+            st.rerun()
