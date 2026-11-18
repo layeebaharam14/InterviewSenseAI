@@ -71,28 +71,29 @@ def main():
         st.session_state['_last_nav_position'] = nav_key
         scroll_to_top()
 
-    # Router & Page Isolation Container:
-    # Keyed container forces React to unmount the previous page completely upon page transition,
-    # guaranteeing that elements from Mode Selection never linger in the DOM during active interview.
-    page = st.session_state.current_page
-    with st.container(key=f"page_view_{page}"):
+    # Page Container: Dedicated container ensuring clean DOM replacement between pages
+    page_container = st.empty()
+    with page_container.container():
+        # Router & Page Isolation Container:
+        page = st.session_state.current_page
+        with st.container(key=f"page_view_{page}"):
 
-        if page == 'landing':
-            render_landing_page()
-        elif page == 'mode_selection':
-            render_mode_selection_page()
-        elif page == 'technical_setup':
-            render_technical_setup_page()
-        elif page == 'technical_interview':
-            render_technical_interview_page()
-        elif page in ('technical_submission', 'technical_completed'):
-            render_technical_submission_page()
-        elif page in ('technical_results', 'technical_analysis', 'technical_analysis_placeholder'):
-            render_technical_results_page()
-        elif page == 'interview':
-            render_interview_page()
-        elif page == 'results':
-            render_results_page()
+            if page == 'landing':
+                render_landing_page()
+            elif page == 'mode_selection':
+                render_mode_selection_page()
+            elif page == 'technical_setup':
+                render_technical_setup_page()
+            elif page == 'technical_interview':
+                render_technical_interview_page()
+            elif page in ('technical_submission', 'technical_completed'):
+                render_technical_submission_page()
+            elif page in ('technical_results', 'technical_analysis', 'technical_analysis_placeholder'):
+                render_technical_results_page()
+            elif page == 'interview':
+                render_interview_page()
+            elif page == 'results':
+                render_results_page()
 
 
 if __name__ == "__main__":
