@@ -22,6 +22,42 @@ import time
 import tempfile
 import speech_recognition as sr
 
+# ---------------------------------------------------------------------------
+# Helper: robust microphone selection
+# ---------------------------------------------------------------------------
+def _get_microphone():
+    """Return a functional ``sr.Microphone`` instance.
+
+    The default ``sr.Microphone()`` may point to a non‑working device on some
+    Windows setups. We attempt a few common device indices (0‑4) before
+    raising an exception. This improves reliability of the Mock Interview audio
+    capture without altering the technical interview workflow.
+    """
+    # Try default first
+    try:
+        mic = sr.Microphone()
+        # Test opening the stream
+        with mic as source:
+            pass
+        print("Using default microphone for audio capture.")
+        return mic
+    except Exception:
+        pass
+
+    # Fallback: iterate over possible device indices
+    for idx in range(5):
+        try:
+            mic = sr.Microphone(device_index=idx)
+            with mic as source:
+                pass
+            print(f"Using microphone device_index={idx} for audio capture.")
+            return mic
+        except Exception:
+            continue
+
+    # No accessible microphone found
+    raise OSError("No accessible microphone device found.")
+
 # =============================================================================
 # 1. TECHNICAL TERMINOLOGY NORMALIZATION RULES
 # =============================================================================
@@ -335,7 +371,7 @@ def record_and_transcribe_audio(
     r.pause_threshold = 2.0
 
     try:
-        with sr.Microphone() as source:
+        with _get_microphone() as source:
             # Short ambient noise calibration to preserve candidate's opening speech
             try:
                 r.adjust_for_ambient_noise(source, duration=0.25)
