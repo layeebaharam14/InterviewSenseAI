@@ -272,5 +272,15 @@ def render_results_page():
         if st.button("Restart Interview", type="primary", use_container_width=True):
             st.session_state.current_page = "landing"
             st.session_state.current_tab = "Home"
+            st.session_state.question_index = 0
+            st.session_state.current_questions = []
+            st.session_state.video_results = []
+            st.session_state.audio_results = []
+            st.session_state.frames = []
+            st.session_state.is_recording = False
+            st.session_state.analysis_done = False
+            st.session_state.question_spoken = False
+            st.session_state.hardware_verified = False
+            st.session_state.last_audio_error = None
             scroll_to_top()
             st.rerun()

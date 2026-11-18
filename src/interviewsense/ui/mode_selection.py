@@ -65,6 +65,7 @@ def start_mock_interview():
     st.session_state.analysis_done = False
     st.session_state.hardware_verified = False
     st.session_state.frames = []
+    st.session_state.last_audio_error = None
     scroll_to_top()
     st.rerun()
 

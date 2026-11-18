@@ -27,6 +27,7 @@ from src.interviewsense.analysis.technical_evaluation import (
 )
 from src.interviewsense.reports.technical_report_pdf import generate_technical_pdf_report
 from src.interviewsense.services.technical_speech import (
+    _get_microphone,
     normalize_technical_terms,
     record_and_transcribe_audio,
     transcribe_audio_file,
@@ -62,6 +63,13 @@ def render_interview_page():
     # Show Simulation Mode Badge
     st.markdown('<div style="text-align:center;"><div class="mode-badge">🔴 Real-Time Interview Simulation Mode</div></div>', unsafe_allow_html=True)
     
+    # Guard: if no questions initialized, redirect to mode selection
+    if not st.session_state.get('current_questions'):
+        st.session_state.current_page = 'mode_selection'
+        scroll_to_top()
+        st.rerun()
+        return
+
     # If we have reached the end of the questions
     if st.session_state.question_index >= len(st.session_state.current_questions):
         st.session_state.current_page = 'results'
@@ -107,7 +115,7 @@ def render_interview_page():
 
                 # Check Microphone
                 try:
-                    with sr.Microphone() as source:
+                    with _get_microphone() as source:
                         mic_ready = True
                 except Exception as e:
                     print(f"Microphone test failed: {e}")
@@ -244,16 +252,44 @@ def render_interview_page():
             else:
                 st.session_state.last_audio_error = None
 
-            # Process frames
-            video_res = aggregate_video_analysis(st.session_state.frames)
+            # Process frames with safe fallback
+            try:
+                video_res = aggregate_video_analysis(st.session_state.frames)
+            except Exception:
+                video_res = {
+                    "face_detected": False,
+                    "eye_contact": "unavailable",
+                    "movement": "unavailable",
+                    "multiple_faces_detected": False,
+                    "face_presence_pct": 0.0,
+                    "face_position": "unavailable",
+                    "gaze_direction": "unavailable",
+                    "posture": "unavailable",
+                    "total_frames": len(st.session_state.frames),
+                    "face_frames": 0,
+                }
             st.session_state.video_results.append(video_res)
 
-            # Process Audio -- pass audio_failed so scoring skips unfair penalties
-            audio_res = analyze_audio_behavior(
-                transcribed_text,
-                record_duration,
-                audio_failed=audio_pipeline_failed,
-            )
+            # Process Audio with safe fallback -- pass audio_failed so scoring skips unfair penalties
+            try:
+                audio_res = analyze_audio_behavior(
+                    transcribed_text,
+                    record_duration,
+                    audio_failed=audio_pipeline_failed,
+                )
+            except Exception:
+                audio_res = {
+                    "transcribed_text": "",
+                    "word_count": 0,
+                    "words_per_minute": 0.0,
+                    "speech_rate": "Unavailable",
+                    "filler_words": 0,
+                    "filler_details": {},
+                    "pauses": 0,
+                    "fluency_score": 0,
+                    "meaningful": False,
+                    "audio_available": False,
+                }
             st.session_state.audio_results.append(audio_res)
             
         st.session_state.is_recording = False

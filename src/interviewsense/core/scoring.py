@@ -9,7 +9,7 @@ def calculate_scores(video_results_list, audio_results_list):
       only penalised for answers where audio was actually obtainable.
     - Confidence and nervousness still reflect camera/video evidence when present.
     """
-    total_questions = len(video_results_list)
+    total_questions = max(len(video_results_list), len(audio_results_list))
     if total_questions == 0:
         return {
             "confidence": 0,
@@ -27,7 +27,9 @@ def calculate_scores(video_results_list, audio_results_list):
     audio_evaluated = 0   # questions with usable audio
     video_evaluated = 0   # questions where face was detectable at least once
 
-    for v_res, a_res in zip(video_results_list, audio_results_list):
+    for i in range(total_questions):
+        v_res = video_results_list[i] if i < len(video_results_list) else {}
+        a_res = audio_results_list[i] if i < len(audio_results_list) else {}
         # -----------------------------------------------------------------
         # VIDEO / BEHAVIOURAL penalties
         # -----------------------------------------------------------------

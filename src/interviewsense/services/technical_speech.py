@@ -58,6 +58,8 @@ def _get_microphone():
     # No accessible microphone found
     raise OSError("No accessible microphone device found.")
 
+get_microphone = _get_microphone
+
 # =============================================================================
 # 1. TECHNICAL TERMINOLOGY NORMALIZATION RULES
 # =============================================================================
