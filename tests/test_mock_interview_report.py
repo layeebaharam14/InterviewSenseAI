@@ -298,8 +298,51 @@ class TestHRResultsModuleContract(unittest.TestCase):
         self.assertIn("generate_hr_pdf_report", code)
         self.assertIn("Download Mock Interview Report (PDF)", code)
         self.assertIn("Restart Interview", code)
-        self.assertIn("st.session_state.current_page = \"landing\"", code)
-        self.assertIn("st.session_state.current_tab = \"Home\"", code)
+        self.assertIn("st.session_state.current_page = \"mode_selection\"", code)
+        self.assertIn("questions_accordion_group", code)
+        self.assertIn("disclaimers_accordion_group", code)
+
+    def test_results_ui_refinements(self):
+        """Verifies the 5 targeted UI and navigation refinements in hr_results.py."""
+        ui_path = os.path.join("src", "interviewsense", "ui", "hr_results.py")
+        with open(ui_path, "r", encoding="utf-8") as f:
+            code = f.read()
+
+        # 1. Centred subtitle
+        self.assertIn("text-align: center", code)
+        self.assertIn("Comprehensive behavioral and speech evaluation based on your simulation performance.", code)
+
+        # 2. Evaluation coverage understandable presentation
+        self.assertIn("Evaluation Coverage", code)
+        self.assertIn("Audio:", code)
+        self.assertIn("Video:", code)
+        self.assertIn("{audio_q}/{total_q} questions", code)
+        self.assertIn("{video_q}/{total_q} questions", code)
+
+        # 3. Accordion styling (dark navy question headers, white disclaimer header with dark text)
+        self.assertIn(".st-key-questions_accordion_group details[data-testid=\"stExpander\"] > summary", code)
+        self.assertIn("#0f172a", code)  # dark navy
+        self.assertIn(".st-key-disclaimers_accordion_group details[data-testid=\"stExpander\"] > summary", code)
+        self.assertIn("#ffffff", code)  # white disclaimer header
+
+        # 4. Matched action buttons
+        self.assertIn("type=\"primary\"", code)
+        self.assertIn(".stDownloadButton > button", code)
+
+        # 5. Restart Interview routes to mode_selection and resets state
+        self.assertIn('st.session_state.current_page = "mode_selection"', code)
+        self.assertIn("st.session_state.question_index = 0", code)
+        self.assertIn("st.session_state.current_questions = []", code)
+        self.assertIn("st.session_state.video_results = []", code)
+        self.assertIn("st.session_state.audio_results = []", code)
+
+    def test_all_question_expanders_collapsed_by_default(self):
+        """Verifies that all question analysis expanders are collapsed by default (expanded=False)."""
+        ui_path = os.path.join("src", "interviewsense", "ui", "hr_results.py")
+        with open(ui_path, "r", encoding="utf-8") as f:
+            code = f.read()
+        self.assertIn('with st.expander(f"{status_icon} Question {q_num}: {q_title}", expanded=False):', code)
+        self.assertNotIn("expanded=(idx == 0)", code)
 
 
 if __name__ == "__main__":

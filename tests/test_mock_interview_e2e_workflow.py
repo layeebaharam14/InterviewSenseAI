@@ -250,8 +250,7 @@ class TestMockInterviewE2EWorkflow(unittest.TestCase):
         state.technical_skills = ["OOP in Python"]
 
         # Simulate Restart Interview action
-        state.current_page = "landing"
-        state.current_tab = "Home"
+        state.current_page = "mode_selection"
         state.question_index = 0
         state.current_questions = []
         state.video_results = []
@@ -264,7 +263,7 @@ class TestMockInterviewE2EWorkflow(unittest.TestCase):
         state.last_audio_error = None
 
         # Verify mock interview state is thoroughly reset
-        self.assertEqual(state.current_page, "landing")
+        self.assertEqual(state.current_page, "mode_selection")
         self.assertEqual(state.question_index, 0)
         self.assertEqual(len(state.current_questions), 0)
         self.assertEqual(len(state.video_results), 0)
@@ -344,6 +343,37 @@ class TestMockInterviewE2EWorkflow(unittest.TestCase):
         pdf_bytes = generate_technical_pdf_report(tech_summary, tech_summary)
         self.assertIsInstance(pdf_bytes, bytes)
         self.assertGreater(len(pdf_bytes), 1000)
+
+    def test_06_screen_isolation_and_no_previous_page_leakage(self):
+        """Verifies screen isolation architecture between Mode Selection and Mock Interview."""
+        # 1. Verify app.py uses dynamic keyed container for page isolation
+        app_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app.py"))
+        with open(app_path, "r", encoding="utf-8") as f:
+            app_code = f.read()
+
+        self.assertIn("st.container", app_code, "app.py must wrap router in a container for DOM isolation")
+        self.assertIn("page_view_", app_code, "app.py must use dynamic page key for clean React unmounting")
+
+        # 2. Verify hr_interview.py strictly contains only interview elements
+        hr_int_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src", "interviewsense", "ui", "hr_interview.py"))
+        with open(hr_int_path, "r", encoding="utf-8") as f:
+            hr_code = f.read()
+
+        # Elements that MUST be present on the active Mock Interview screen:
+        self.assertIn("🔴 Real-Time Interview Simulation Mode", hr_code)
+        self.assertIn("Question {current_q_num} of {total_q}", hr_code)
+        self.assertIn("🎙️ Recording your response...", hr_code)
+        self.assertIn("⏳ Time Remaining:", hr_code)
+        self.assertIn("Starting in", hr_code)
+        self.assertIn("col_cam_c", hr_code)
+
+        # Elements from Mode Selection that MUST NEVER be present in hr_interview.py:
+        self.assertNotIn("btn_start_mock", hr_code)
+        self.assertNotIn("btn_start_tech", hr_code)
+        self.assertNotIn("Choose Your Interview Mode", hr_code)
+        self.assertNotIn("mode-card-container", hr_code)
+        self.assertNotIn("mode-pill", hr_code)
+        self.assertNotIn("render_mode_selection_page", hr_code)
 
 
 if __name__ == "__main__":

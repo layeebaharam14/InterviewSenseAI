@@ -24,8 +24,148 @@ def render_results_page():
     st.markdown('<div id="top-anchor"></div>', unsafe_allow_html=True)
     scroll_to_top()
 
+    # Scoped styling for results dashboard components (expanders & actions)
+    st.markdown("""
+    <style>
+    /* Question Expanders: Dark Navy/Blue header with persistent White text across all states */
+    .st-key-questions_accordion_group details[data-testid="stExpander"],
+    #question-accordions-group + div details[data-testid="stExpander"] {
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        border-radius: 12px !important;
+        background: rgba(11, 17, 32, 0.85) !important;
+        overflow: hidden !important;
+        margin-bottom: 0.65rem !important;
+    }
+
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary,
+    #question-accordions-group + div details[data-testid="stExpander"] > summary {
+        background: #0f172a !important; /* Dark navy / blue */
+        color: #ffffff !important;
+        border-radius: 10px !important;
+        padding: 0.75rem 1rem !important;
+    }
+
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary:hover,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary:focus,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary:active,
+    .st-key-questions_accordion_group details[data-testid="stExpander"][open] > summary {
+        background: #1e293b !important;
+        color: #ffffff !important;
+    }
+
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary p,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary span,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary div,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary:hover p,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary:hover span,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary:hover div {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary svg,
+    .st-key-questions_accordion_group details[data-testid="stExpander"] > summary [data-testid="stExpanderToggleIcon"] {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }
+
+    /* Disclaimer Expander: White header with persistent Black/Dark text across all states */
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"],
+    #disclaimers-accordion-group + div details[data-testid="stExpander"] {
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: 12px !important;
+        background: rgba(11, 17, 32, 0.85) !important;
+        overflow: hidden !important;
+    }
+
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary,
+    #disclaimers-accordion-group + div details[data-testid="stExpander"] > summary {
+        background: #ffffff !important; /* White background */
+        color: #0f172a !important; /* Dark text */
+        border-radius: 10px !important;
+        padding: 0.75rem 1rem !important;
+    }
+
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary:hover,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary:focus,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary:active,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"][open] > summary {
+        background: #f1f5f9 !important; /* Subtle off-white */
+        color: #0f172a !important;
+    }
+
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary p,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary span,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary div,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary:hover p,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary:hover span,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary:hover div {
+        color: #0f172a !important; /* Black/Dark text */
+        font-weight: 700 !important;
+    }
+
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary svg,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] > summary [data-testid="stExpanderToggleIcon"] {
+        fill: #0f172a !important;
+        color: #0f172a !important;
+    }
+
+    /* Disclaimer Expanded Details Interior: Dark background and readable white/slate text */
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
+        background: rgba(11, 17, 32, 0.95) !important;
+        padding: 1.2rem !important;
+    }
+
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] div[data-testid="stExpanderDetails"] p,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] div[data-testid="stExpanderDetails"] li,
+    .st-key-disclaimers_accordion_group details[data-testid="stExpander"] div[data-testid="stExpanderDetails"] strong {
+        color: #e2e8f0 !important;
+    }
+
+    /* Action Buttons: Exact 1:1 visual match between PDF Download and Restart Interview */
+    .stDownloadButton, .stDownloadButton > button {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        text-shadow: none !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        padding: 0.85rem 1.8rem !important;
+        font-size: 1.15rem !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 15px rgba(14, 165, 233, 0.45) !important;
+        max-width: 340px !important;
+        display: block !important;
+        margin: 0 auto !important;
+    }
+
+    .stDownloadButton > button:hover {
+        transform: scale(1.05) translateY(-2px) !important;
+        filter: brightness(1.15) !important;
+        box-shadow: 0 10px 30px rgba(14, 165, 233, 0.7) !important;
+        color: #ffffff !important;
+    }
+
+    .stDownloadButton > button:active {
+        transform: scale(0.98) translateY(0) !important;
+        box-shadow: 0 2px 8px rgba(6, 182, 212, 0.4) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # 1. Title and Centered Subtitle
     st.title("📊 Final Interview Verdict")
-    st.write("Comprehensive behavioral and speech evaluation based on your simulation performance.")
+    st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 1.05rem; margin-top: -0.5rem; margin-bottom: 1.5rem;'>Comprehensive behavioral and speech evaluation based on your simulation performance.</p>", unsafe_allow_html=True)
     st.write("---")
 
     # Retrieve session data
@@ -114,10 +254,22 @@ def render_results_page():
             help="Derived from speaking rate (WPM), speech fluency, and filler word usage."
         )
     with col4:
-        st.metric(
-            "Evaluation Coverage",
-            f"{audio_q}/{total_q} Audio · {video_q}/{total_q} Video",
-            help="Proportion of interview questions with complete sensor evaluation."
+        st.markdown(
+            f"""
+            <div data-testid="stMetric" style="display: flex; flex-direction: column; justify-content: flex-start; height: 100%; text-align: center;">
+                <div data-testid="stMetricLabel" style="text-align: center; font-size: 1.1rem; color: #cbd5e1; font-weight: 500; margin-bottom: 6px;">
+                    Evaluation Coverage
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 10px 14px; text-align: left; font-size: 0.95rem; line-height: 1.6;">
+                    <div style="color: #38bdf8; font-weight: 700;">• Audio: <span style="color: #ffffff; font-weight: 600;">{audio_q}/{total_q} questions</span></div>
+                    <div style="color: #38bdf8; font-weight: 700;">• Video: <span style="color: #ffffff; font-weight: 600;">{video_q}/{total_q} questions</span></div>
+                </div>
+                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px; text-align: center; line-height: 1.3;">
+                    Audio: transcribed speech · Video: verified visual tracking
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
     st.write("---")
@@ -156,99 +308,103 @@ def render_results_page():
 
     q_evals = summary.get("question_evaluations", [])
 
-    if q_evals:
-        for idx, q_data in enumerate(q_evals):
-            q_num = idx + 1
-            q_title = q_data.get("question", f"Question {q_num}")
-            a_status = q_data.get("audio_status", "unavailable")
-            v_status = q_data.get("video_status", "unavailable")
-            transcript = q_data.get("transcript", "")
+    st.markdown('<div id="question-accordions-group"></div>', unsafe_allow_html=True)
+    with st.container(key="questions_accordion_group"):
+        if q_evals:
+            for idx, q_data in enumerate(q_evals):
+                q_num = idx + 1
+                q_title = q_data.get("question", f"Question {q_num}")
+                a_status = q_data.get("audio_status", "unavailable")
+                v_status = q_data.get("video_status", "unavailable")
+                transcript = q_data.get("transcript", "")
 
-            # Expander header icon
-            if a_status == "transcribed" and v_status == "detected":
-                status_icon = "✅"
-            elif a_status == "transcribed" or v_status == "detected":
-                status_icon = "⚠️"
-            else:
-                status_icon = "❌"
-
-            with st.expander(f"{status_icon} Question {q_num}: {q_title}", expanded=(idx == 0)):
-                # Candidate response display
-                if a_status == "transcribed":
-                    st.markdown(f"**Candidate Response:**\n> \"*{transcript}*\"")
-                elif a_status == "silent":
-                    st.info("🔇 **Candidate Response:** *No speech was detected during this recording.*")
+                # Expander header icon
+                if a_status == "transcribed" and v_status == "detected":
+                    status_icon = "✅"
+                elif a_status == "transcribed" or v_status == "detected":
+                    status_icon = "⚠️"
                 else:
-                    st.warning("⚠️ **Candidate Response:** *Audio capture was unavailable due to a hardware or recognition error.*")
+                    status_icon = "❌"
 
-                # Metrics row
-                col_m1, col_m2 = st.columns(2)
-                with col_m1:
-                    st.markdown("**🎙️ Speech & Audio Telemetry:**")
+                with st.expander(f"{status_icon} Question {q_num}: {q_title}", expanded=False):
+                    # Candidate response display
                     if a_status == "transcribed":
-                        wpm = q_data.get("words_per_minute", 0.0)
-                        words = q_data.get("word_count", 0)
-                        rate = q_data.get("speech_rate", "—")
-                        fillers = q_data.get("filler_words", 0)
-                        pauses = q_data.get("pauses", 0)
-                        st.markdown(
-                            f"- **Pace:** {wpm} WPM ({rate})\n"
-                            f"- **Word Count:** {words} words\n"
-                            f"- **Filler Words:** {fillers}\n"
-                            f"- **Estimated Pauses:** {pauses}"
-                        )
+                        st.markdown(f"**Candidate Response:**\n> \"*{transcript}*\"")
                     elif a_status == "silent":
-                        st.markdown("- *Silence recorded (0 words spoken)*")
+                        st.info("🔇 **Candidate Response:** *No speech was detected during this recording.*")
                     else:
-                        st.markdown("- *Audio capture unavailable*")
+                        st.warning("⚠️ **Candidate Response:** *Audio capture was unavailable due to a hardware or recognition error.*")
 
-                with col_m2:
-                    st.markdown("**📷 Visual & Composure Telemetry:**")
-                    if v_status == "detected":
-                        gaze = str(q_data.get("eye_contact", "unavailable")).capitalize()
-                        mov = str(q_data.get("movement", "unavailable")).capitalize()
-                        pos = str(q_data.get("face_position", "unavailable")).capitalize()
-                        posture = str(q_data.get("posture", "unavailable")).capitalize()
-                        st.markdown(
-                            f"- **Eye Contact:** {gaze}\n"
-                            f"- **Composure / Movement:** {mov}\n"
-                            f"- **Framing:** {pos}\n"
-                            f"- **Posture:** {posture}"
-                        )
-                    else:
-                        st.markdown("- *Face was not clearly detected in frame*")
+                    # Metrics row
+                    col_m1, col_m2 = st.columns(2)
+                    with col_m1:
+                        st.markdown("**🎙️ Speech & Audio Telemetry:**")
+                        if a_status == "transcribed":
+                            wpm = q_data.get("words_per_minute", 0.0)
+                            words = q_data.get("word_count", 0)
+                            rate = q_data.get("speech_rate", "—")
+                            fillers = q_data.get("filler_words", 0)
+                            pauses = q_data.get("pauses", 0)
+                            st.markdown(
+                                f"- **Pace:** {wpm} WPM ({rate})\n"
+                                f"- **Word Count:** {words} words\n"
+                                f"- **Filler Words:** {fillers}\n"
+                                f"- **Estimated Pauses:** {pauses}"
+                            )
+                        elif a_status == "silent":
+                            st.markdown("- *Silence recorded (0 words spoken)*")
+                        else:
+                            st.markdown("- *Audio capture unavailable*")
 
-                # Evidence-based observations
-                st.markdown("---")
-                col_fb1, col_fb2 = st.columns(2)
-                with col_fb1:
-                    st.markdown("##### 🌟 What went well")
-                    for w in q_data.get("what_went_well", []):
-                        st.markdown(f"- {w}")
-                with col_fb2:
-                    st.markdown("##### 🎯 What to improve")
-                    for imp in q_data.get("what_to_improve", []):
-                        st.markdown(f"- {imp}")
-    else:
-        st.info("No question responses were recorded during this session.")
+                    with col_m2:
+                        st.markdown("**📷 Visual & Composure Telemetry:**")
+                        if v_status == "detected":
+                            gaze = str(q_data.get("eye_contact", "unavailable")).capitalize()
+                            mov = str(q_data.get("movement", "unavailable")).capitalize()
+                            pos = str(q_data.get("face_position", "unavailable")).capitalize()
+                            posture = str(q_data.get("posture", "unavailable")).capitalize()
+                            st.markdown(
+                                f"- **Eye Contact:** {gaze}\n"
+                                f"- **Composure / Movement:** {mov}\n"
+                                f"- **Framing:** {pos}\n"
+                                f"- **Posture:** {posture}"
+                            )
+                        else:
+                            st.markdown("- *Face was not clearly detected in frame*")
+
+                    # Evidence-based observations
+                    st.markdown("---")
+                    col_fb1, col_fb2 = st.columns(2)
+                    with col_fb1:
+                        st.markdown("##### 🌟 What went well")
+                        for w in q_data.get("what_went_well", []):
+                            st.markdown(f"- {w}")
+                    with col_fb2:
+                        st.markdown("##### 🎯 What to improve")
+                        for imp in q_data.get("what_to_improve", []):
+                            st.markdown(f"- {imp}")
+        else:
+            st.info("No question responses were recorded during this session.")
 
     st.write("---")
 
     # -----------------------------------------------------------------
     # E. Evaluation Coverage & Scientific Limitations
     # -----------------------------------------------------------------
-    with st.expander("ℹ️ Evaluation Limitations & Methodology Disclaimers", expanded=False):
-        st.markdown(
-            "**Data Coverage & Quality Disclosures:**\n"
-            f"- **Questions recorded:** {total_q}\n"
-            f"- **Face presence verified:** {video_q}/{total_q} questions\n"
-            f"- **Speech transcribed:** {audio_q}/{total_q} questions\n\n"
-            "**Scientific & Behavioral Limitations:**\n"
-            "- **Observable signals only:** Measurements reflect webcam framing, eye gaze approximations, and speech rate. "
-            "They do not measure personality, intelligence, or internal emotional state.\n"
-            "- **Non-hallucinatory evaluation:** All metrics are calculated directly from physical sensors and speech transcripts.\n"
-            "- **Practice purpose:** This feedback is designed to build confidence and refine delivery for real-world interviews."
-        )
+    st.markdown('<div id="disclaimers-accordion-group"></div>', unsafe_allow_html=True)
+    with st.container(key="disclaimers_accordion_group"):
+        with st.expander("ℹ️ Evaluation Limitations & Methodology Disclaimers", expanded=False):
+            st.markdown(
+                "**Data Coverage & Quality Disclosures:**\n"
+                f"- **Questions recorded:** {total_q}\n"
+                f"- **Face presence verified:** {video_q}/{total_q} questions\n"
+                f"- **Speech transcribed:** {audio_q}/{total_q} questions\n\n"
+                "**Scientific & Behavioral Limitations:**\n"
+                "- **Observable signals only:** Measurements reflect webcam framing, eye gaze approximations, and speech rate. "
+                "They do not measure personality, intelligence, or internal emotional state.\n"
+                "- **Non-hallucinatory evaluation:** All metrics are calculated directly from physical sensors and speech transcripts.\n"
+                "- **Practice purpose:** This feedback is designed to build confidence and refine delivery for real-world interviews."
+            )
 
     st.write("---")
 
@@ -266,12 +422,12 @@ def render_results_page():
             data=pdf_bytes,
             file_name=pdf_filename,
             mime="application/pdf",
+            type="primary",
             use_container_width=True,
         )
     with col_act2:
         if st.button("Restart Interview", type="primary", use_container_width=True):
-            st.session_state.current_page = "landing"
-            st.session_state.current_tab = "Home"
+            st.session_state.current_page = "mode_selection"
             st.session_state.question_index = 0
             st.session_state.current_questions = []
             st.session_state.video_results = []
@@ -282,5 +438,7 @@ def render_results_page():
             st.session_state.question_spoken = False
             st.session_state.hardware_verified = False
             st.session_state.last_audio_error = None
+            st.session_state.pop("evaluation_summary", None)
+            st.session_state.pop("mock_interview_summary", None)
             scroll_to_top()
             st.rerun()

@@ -71,11 +71,11 @@ def main():
         st.session_state['_last_nav_position'] = nav_key
         scroll_to_top()
 
-    # Page Container: Dedicated container ensuring clean DOM replacement between pages
-    page_container = st.empty()
-    with page_container.container():
-        # Router
-        page = st.session_state.current_page
+    # Router & Page Isolation Container:
+    # Keyed container forces React to unmount the previous page completely upon page transition,
+    # guaranteeing that elements from Mode Selection never linger in the DOM during active interview.
+    page = st.session_state.current_page
+    with st.container(key=f"page_view_{page}"):
 
         if page == 'landing':
             render_landing_page()

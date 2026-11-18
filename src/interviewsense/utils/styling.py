@@ -267,7 +267,7 @@ def apply_css():
         }
 
         /* 3. FIX BUTTON SPACING & DESIGN */
-        .stButton {
+        .stButton, .stDownloadButton {
             width: 100%;
             display: flex;
             justify-content: center;
@@ -415,7 +415,7 @@ def apply_css():
                 margin-bottom: 1.5rem !important;
             }
             
-            .stButton > button {
+            .stButton > button, .stDownloadButton > button {
                 width: 100% !important;
                 max-width: 100% !important; /* Make button full-width */
                 padding: 1.2rem 1rem !important; /* Slightly larger height for touch */
